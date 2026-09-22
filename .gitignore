@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Build artifacts
+build/
+dist/
+
+# Virtual environments
+.venv*/
+venv/
+
+# Secrets / local config
+.env
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local model artifacts (weights are never committed; the package fetches them from HF)
+*.pt
+*.onnx
+
+# Local dev bundles (e.g. localbundle/mini with graphs + tokenizer.json + manifest.json)
+localbundle/
+
+# Local agent instructions (kept local, not shipped; AGENTS.md is the committed one)
+CLAUDE.md
+
+# Editors
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Coverage / other test tooling
+.coverage
+htmlcov/
+.tox/
+.nox/

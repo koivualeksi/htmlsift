@@ -1,0 +1,20 @@
+# The 2026 field report
+
+## Summary
+
+Downloads **opened** this week. Read the [full report](/full) for the numbers.
+
+- First finding
+- Second finding
+>
+> A quote worth keeping.
+
+| Metric | Value |
+| --- | --- |
+| Downloads | 1,240 |
+| Signups | 87 |
+
+```
+def extract(html):
+    return sift(html)
+```

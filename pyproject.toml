@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "htmlsift"
+dynamic = ["version"]
+description = "Main-content extraction for web pages"
+readme = "README.pypi.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Aleksi Koivu", email = "koivu.aleksi@gmail.com" }]
+keywords = ["html", "main-content", "content-extraction", "boilerplate-removal", "web-scraping"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+dependencies = [
+    "onnxruntime",
+    "tokenizers",
+    "lxml",
+    "numpy",
+    "huggingface-hub",
+]
+
+[project.optional-dependencies]
+full = ["torch", "transformers"] # unlocks the base 311m model
+
+[project.urls]
+Repository = "https://github.com/koivualeksi/htmlsift"
+
+[project.scripts]
+htmlsift = "htmlsift.cli:main"
+
+[tool.hatch.version]
+path = "src/htmlsift/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/htmlsift"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# render.py is vendored byte-faithful from htmlsift-research (only the links= extension
+# added); keep its compact semicolon style rather than restyling the frozen renderer.
+"src/htmlsift/core/render.py" = ["E702"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
