@@ -35,13 +35,21 @@ class Model:
         return fa
 
 
-def load_model(mode="mini", bundle_dir=None, threads=None):
+def load_model(mode="mini", bundle_dir=None, threads=None, device=None):
     """Load `mode` ("mini" or "base") into a Model. bundle_dir reads a local bundle
     (development); otherwise the bundle is fetched from the release repo and cached.
     threads maps to onnxruntime intra-op threads (mini) or torch threads (base).
-    Backends are imported lazily, so a default install never imports torch."""
+    Backends are imported lazily, so a default install never imports torch.
+
+    device selects the base backend's torch device; None lets base pick cuda when a
+    GPU is present, else cpu (with a warning). mini is CPU-only, so anything other than
+    None/"cpu" for mini is rejected here -- a plain string check, so the mini path stays
+    torch-free (no torch.device import on the default install)."""
     if mode not in ("mini", "base"):
         raise ValueError(f"unknown mode {mode!r}; expected 'mini' or 'base'")
+    if mode == "mini" and device not in (None, "cpu"):
+        raise ValueError(
+            f"mini runs on CPU only; use mode='base' for GPU (got device={device!r})")
     paths = resolve_bundle(mode, local_dir=bundle_dir)
     manifest = Manifest.from_file(paths["manifest"])
     tok = FastTokenizer.from_file(paths["tokenizer"])
@@ -51,7 +59,7 @@ def load_model(mode="mini", bundle_dir=None, threads=None):
     else:
         from .core.torch_infer import load_base
         infer_fn = load_base(paths["config"], paths["weights"], manifest.hidden,
-                             feats=manifest.feats, threads=threads)
+                             feats=manifest.feats, threads=threads, device=device)
     return Model(mode=mode, tok=tok, infer_fn=infer_fn, feats=manifest.feats,
                  zscore=_zscore_from_manifest(manifest), cap=manifest.cap,
                  window=manifest.window)

@@ -6,6 +6,7 @@ package never pulls granite.
 
 Entry point: load_base(...) -> infer_fn, the torch mirror of onnx_infer.load_mini.
 """
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -125,14 +126,27 @@ def infer_page(encoder, head, page, dev, autocast):
     return probs.float().cpu().numpy()
 
 
-def load_base(config_path, weights_path, hidden, feats=None, device="cpu",
+def load_base(config_path, weights_path, hidden, feats=None, device=None,
               band=True, threads=None):
     """Load the base bundle into an infer_fn (page -> per-block probs) -- the torch
     mirror of onnx_infer.load_mini. Build the architecture from the baked config, load
     the trained encoder + head weights, optionally enable band attention, and close over
     the forward. `hidden` is the BiGRU head hidden size; `feats` the feature group (base
-    is text-only -> None). No granite download."""
+    is text-only -> None). No granite download.
+
+    device=None auto-selects cuda when a GPU is present, else cpu -- and warns on the
+    cpu fallback, so a silent CPU run can't pass for a GPU one. An explicit "cuda" with
+    no GPU is a clear error rather than a cryptic failure deeper in torch."""
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        if device == "cpu":
+            warnings.warn(
+                "htmlsift: base defaulting to CPU (no CUDA device found); "
+                "pass device='cpu' to silence, or device='cuda' to require GPU",
+                stacklevel=2)
     dev = torch.device(device)
+    if dev.type == "cuda" and not torch.cuda.is_available():
+        raise ValueError(f"device={device!r} requested but no CUDA device is available")
     if threads and dev.type == "cpu":
         torch.set_num_threads(threads)
     config = AutoConfig.from_pretrained(str(Path(config_path).parent))

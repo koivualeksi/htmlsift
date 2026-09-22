@@ -42,8 +42,11 @@ htmlsift.extract(html)               # module-level convenience
 The larger model, from `htmlsift[full]`:
 
 ```python
-ex = Extractor("base", threads=4)    # 311M encoder
+ex = Extractor("base")               # 311M encoder; GPU when present, else CPU (with a warning)
+ex = Extractor("base", device="cuda")  # require the GPU
 ```
+
+`mini` is CPU-only; only `base` runs on the GPU.
 
 ## Output modes
 

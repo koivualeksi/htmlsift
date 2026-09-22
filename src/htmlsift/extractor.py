@@ -22,17 +22,18 @@ class Extractor:
     """Main-content extractor for one mode. The model loads on the first extract() call
     and is reused, so create one Extractor and call it many times."""
 
-    def __init__(self, mode="mini", *, bundle_dir=None, threads=None):
+    def __init__(self, mode="mini", *, bundle_dir=None, threads=None, device=None):
         self.mode = mode
         self._bundle_dir = bundle_dir
         self._threads = threads
+        self._device = device
         self._model = None
 
     @property
     def model(self):
         if self._model is None:
             self._model = load_model(self.mode, bundle_dir=self._bundle_dir,
-                                     threads=self._threads)
+                                     threads=self._threads, device=self._device)
         return self._model
 
     def extract(self, html, output="text", with_blocks=False):

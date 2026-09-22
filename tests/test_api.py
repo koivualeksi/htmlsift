@@ -4,6 +4,7 @@ the model loads, so these exercise the public contract with no network or weight
 import pytest
 
 from htmlsift import Extractor, extract
+from htmlsift.loader import load_model
 
 
 def test_empty_html_with_blocks():
@@ -23,3 +24,9 @@ def test_unknown_output_raises():
 
 def test_module_level_extract_empty():
     assert extract("") == ""
+
+
+def test_mini_rejects_gpu():
+    # mini is CPU-only; the guard raises before any bundle fetch, so no bundle/GPU needed.
+    with pytest.raises(ValueError):
+        load_model("mini", device="cuda")

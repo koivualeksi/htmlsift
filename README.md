@@ -90,8 +90,13 @@ htmlsift.extract(html)               # default mini
 The larger model, from the `[full]` install:
 
 ```python
-ex = Extractor("base", threads=4)    # 311M encoder; `threads` sets CPU parallelism
+ex = Extractor("base")               # 311M encoder; uses the GPU when one is present,
+                                     # else CPU (with a warning)
+ex = Extractor("base", device="cuda")  # require the GPU (errors if none is available)
+ex = Extractor("base", device="cpu", threads=4)  # force CPU; `threads` sets parallelism
 ```
+
+`mini` is CPU-only (int8 ONNX); asking it for a GPU raises. Only `base` runs on the GPU.
 
 ### Example
 
