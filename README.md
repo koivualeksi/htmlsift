@@ -44,14 +44,18 @@ MinerU-HTML v1.1's 1.16. A 21x gap at matched accuracy (F1 0.9311 vs 0.9306).
 
 The shipped models are trained on WMB, so WMB is in-domain. The other two columns are
 **zero-shot**, the model never saw WCXB or the multilingual DAnIEL in training. Each column is
-scored with that benchmark's own metric.
+scored with that benchmark's own metric. `base` leads every heuristic here; `mini` lands just
+behind the best on each board — see **Annotation is a policy** under Concept.
 
 | model | WMB (ROUGE-5) | WCXB (word-F1, zero-shot) | DAnIEL (ROUGE-L, zero-shot) |
 |---|---|---|---|
 | `base` | 0.9311 | 0.8633 | 0.9175 |
 | `mini` | 0.9010 | 0.8474 | 0.8797 |
+| trafilatura | 0.7525 | 0.8584 | 0.8265 |
+| readability | 0.8016 | 0.7653 | 0.8925 |
+| resiliparse | 0.7135 | 0.7909 | 0.7094 |
 
-All results are 3-seed test means.
+Model rows are 3-seed test means; heuristics are single deterministic runs.
 
 ## Installation
 
@@ -161,6 +165,19 @@ Both tiers share the render, the per-line pooling, and the BiGRU head. They diff
 - mini converts text to tokens and mean-pools them, has no internal attention allowing fast CPU processing
 - base uses granite r2 311m embedder using only first 10 layers requiring GPU for efficient usage 
 
+
+</details>
+
+<details>
+<summary><b>Annotation is a policy</b></summary>
+
+![The same page kept differently under different benchmark annotation policies](docs/assets/annotation-example.svg)
+
+htmlsift learns what counts as main content from a benchmark's labels, so it's most accurate on pages that follow that policy. On WebMainBench (the benchmark the shipped models train on) it beats the common heuristic extractors by a wide margin. Zero-shot on benchmarks with different policies, the gap narrows: the 311M `base` still edges every heuristic tested (trafilatura, readability, resiliparse) on both WCXB and DAnIEL, and `mini` lands just behind the strongest heuristic on each board, ahead of the rest.
+
+Train htmlsift on a different policy and it turns around. Fit it to WCXB instead of WMB and it tops WCXB but loses points on other benchmarks. For example when training `base` model on WCXB data, WMB falls to 0.8479, DAnIEL to 0.8826 while WCXB climbs up to 0.9209. Whichever policy you train on, htmlsift leads there and pays for it elsewhere.
+
+For more information, review the [htmlsift-research](https://github.com/koivualeksi/htmlsift-research) readme.
 
 </details>
 
