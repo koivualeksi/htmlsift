@@ -35,6 +35,9 @@ full = ["torch", "transformers"] # unlocks the base 311m model
 
 [project.urls]
 Repository = "https://github.com/koivualeksi/htmlsift"
+Research = "https://github.com/koivualeksi/htmlsift-research"
+"Model weights" = "https://huggingface.co/koivualeksi/htmlsift-release"
+Issues = "https://github.com/koivualeksi/htmlsift/issues"
 
 [project.scripts]
 htmlsift = "htmlsift.cli:main"
