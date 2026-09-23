@@ -214,7 +214,9 @@ attribute WebMainBench when you use them.
 ## References
 
 - **WMB — WebMainBench.** The training benchmark; ROUGE-5 main-content metric.
-  [opendatalab/WebMainBench](https://github.com/opendatalab/WebMainBench)
+  Liu et al., *Dripper: Token-Efficient Main HTML Extraction with a Lightweight LM*.
+  [arXiv:2511.23119](https://arxiv.org/abs/2511.23119) ·
+  [repo](https://github.com/opendatalab/WebMainBench)
 - **WCXB — Web Content Extraction Benchmark.** Foley, *WCXB: A Multi-Type Web Content Extraction
   Benchmark*. [arXiv:2605.21097](https://arxiv.org/abs/2605.21097) ·
   [repo](https://github.com/Murrough-Foley/web-content-extraction-benchmark)
