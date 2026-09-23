@@ -7,7 +7,7 @@ Main-content extraction for web pages: hand it a raw HTML string and get back th
 Two models shipped, both trained on [WebMainBench][wmb] (WMB) — 7,825 labelled pages, custom split
 6,548 train / 732 val / 545 test:
 
-- **`mini`** (default) - a small int8-ONNX model that runs on CPU. `pip install htmlsift`
+- **`mini`** (default) - a fast int8-ONNX model that runs on CPU. `pip install htmlsift`
 - **`base`** - a 311M encoder, most accurate and GPU-capable. `pip install htmlsift[full]`
 
 Each model is fully re-trainable with your own annotated data and the whole research suite is available at [htmlsift-research](https://github.com/koivualeksi/htmlsift-research)
@@ -18,12 +18,13 @@ Each model is fully re-trainable with your own annotated data and the whole rese
 
 | model | desc | WMB test F1 | seeds | CPU (pages/s) | GPU (pages/s) | install |
 |---|---|---|---|---|---|---|
-| `base` | 311m-10 | **0.9311** | 3 | 0.4 | 24.6 | `htmlsift[full]` |
-| unpublished | 97m-6, int8 QAT | 0.9256 | 3 | 0.9 | 30.2 | — |
-| `mini` | int8 table | 0.9010 | 3 | **27.7** | — | `htmlsift` |
+| `base` | 311M, 10 layers | **0.9311** | 3 | 0.4 | 24.6 | `htmlsift[full]` |
+| unpublished | 97M, 6 layers, int8 QAT | 0.9256 | 3 | 0.9 | 30.2 | — |
+| `mini` | int8 embedding table | 0.9010 | 3 | **27.7** | — | `htmlsift` |
 
 * GPU = RTX 4090
 * CPU = Ryzen 5 3600 single thread
+* WMB test = 544 pages: one of the 545 test pages has no gold reference and is skipped in scoring.
 
 ### On CPU
 
@@ -36,7 +37,7 @@ per-page time (36 vs 31 ms median) and scores ~15 F1 points higher. readability 
 
 ![htmlsift base sustains 21x the throughput of MinerU-HTML at matched F1 on an RTX 4090](docs/assets/gpu_speed_accuracy_lite.svg)
 
-RTX 4090, WMB test (544 pages). `base` with band attention sustains 24.6 pages/s against
+RTX 4090, WMB test (544 pages). `base` sustains 24.6 pages/s against
 MinerU-HTML v1.1's 1.16. A 21x gap at matched accuracy (F1 0.9311 vs 0.9306).
 
 ### Cross benchmark accuracy
@@ -47,8 +48,8 @@ scored with that benchmark's own metric.
 
 | model | WMB (ROUGE-5) | WCXB (word-F1, zero-shot) | DAnIEL (ROUGE-L, zero-shot) |
 |---|---|---|---|
-| `base` (311m-10) | 0.9311 | 0.8633 | 0.9175 |
-| `mini` (int8) | 0.9010 | 0.8474 | 0.8797 |
+| `base` | 0.9311 | 0.8633 | 0.9175 |
+| `mini` | 0.9010 | 0.8474 | 0.8797 |
 
 All results are 3-seed test means.
 
@@ -59,7 +60,7 @@ pip install htmlsift          # default: the mini model (CPU, ONNX)
 pip install htmlsift[full]    # adds the base 311M model (torch; GPU-capable)
 ```
 
-- **`htmlsift`** — the `mini` model only; a small install (onnxruntime + tokenizers + lxml +
+- **`htmlsift`** — the `mini` model only; few dependencies (onnxruntime + tokenizers + lxml +
   numpy + huggingface-hub). First use downloads ~230 MB of model files.
 - **`htmlsift[full]`** — adds `torch` + `transformers` to run `base`. First use of `base`
   downloads ~1 GB.
@@ -189,9 +190,9 @@ today. Inline images inside a kept block are preserved in `html` and `markdown`.
 
 Apache-2.0. See [LICENSE](LICENSE).
 
-htmlsift does **not** depend on `html2text`, directly or transitively — rendering and
-serialization are lxml-only, which is what keeps the licence clean. Model weights are
-distributed separately, from the Hugging Face Hub.
+Model weights are distributed from the Hugging Face Hub, also under Apache-2.0, and are
+trained on [WebMainBench](https://github.com/opendatalab/WebMainBench) (Apache-2.0); please
+attribute WebMainBench when you use them.
 
 ## References
 
