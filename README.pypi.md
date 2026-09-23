@@ -20,6 +20,20 @@ GPU = RTX 4090, CPU = Ryzen 5 3600 single thread; WMB test = 544 pages (one of t
 no gold reference). On WMB (in-domain), `mini` scores ~15 F1 points above trafilatura at
 comparable CPU speed.
 
+### Cross-benchmark accuracy (zero-shot)
+
+Trained on WMB, scored on benchmarks the model never saw. Each column uses that benchmark's own metric.
+
+| model | WMB (ROUGE-5) | WCXB (word-F1) | DAnIEL (ROUGE-L) |
+|---|---|---|---|
+| `base` | 0.9311 | 0.8633 | 0.9175 |
+| `mini` | 0.9010 | 0.8474 | 0.8797 |
+| trafilatura | 0.7525 | 0.8584 | 0.8265 |
+| readability | 0.8016 | 0.7653 | 0.8925 |
+| resiliparse | 0.7135 | 0.7909 | 0.7094 |
+
+Model rows are 3-seed test means; heuristics are single deterministic runs. "Main content" is a labeling policy: htmlsift leads in-domain and stays competitive off-policy — retrain on your own labels if your definition differs. Details in the [research repo](https://github.com/koivualeksi/htmlsift-research).
+
 ## Install
 
 ```bash
@@ -70,4 +84,6 @@ ex = Extractor("base", device="cuda")  # require the GPU
 
 ## License
 
-Apache-2.0. Model weights are distributed separately, from the Hugging Face Hub.
+Apache-2.0. Model weights are distributed from the Hugging Face Hub, also under Apache-2.0, and
+are trained on [WebMainBench](https://github.com/opendatalab/WebMainBench) (Apache-2.0); please
+attribute WebMainBench when you use them.
