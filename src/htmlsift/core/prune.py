@@ -11,13 +11,14 @@ from lxml import html as lxml_html
 def keep_set(elements):
     """The nodes to keep: each element, its ancestors, and its descendants. Holding the
     proxies in the set keeps their lxml identity stable for the prune walk."""
-    keep = set()
+    keep, expanded = set(), set()
     for el in elements:
-        if el in keep:
+        if el in expanded:
             continue
-        keep.add(el)
+        sub = {el, *el.iterdescendants()}
+        expanded |= sub
+        keep |= sub
         keep.update(el.iterancestors())
-        keep.update(el.iterdescendants())
     return keep
 
 
