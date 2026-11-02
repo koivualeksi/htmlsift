@@ -42,7 +42,7 @@ pip install htmlsift[full]    # adds the base 311M model (torch; GPU-capable)
 ```
 
 - `htmlsift` — the `mini` model only; few dependencies (onnxruntime + tokenizers + lxml +
-  numpy + huggingface-hub). First use downloads ~230 MB of model files.
+  numpy + huggingface-hub + w3lib). First use downloads ~230 MB of model files.
 - `htmlsift[full]` — adds `torch` + `transformers` to run `base`. First use of `base`
   downloads ~1 GB.
 
@@ -63,6 +63,14 @@ ex.extract(html, with_blocks=True)   # -> (blocks, probs)
 
 import htmlsift
 htmlsift.extract(html)               # module-level convenience
+```
+
+Raw bytes are decoded for you (byte order mark, then `encoding=`, then `<meta charset>`,
+then utf-8 / cp1252):
+
+```python
+ex.extract(response.content)                       # charset from the page itself
+ex.extract(payload, encoding="windows-1251")       # charset from the HTTP / WARC header
 ```
 
 The larger model, from `htmlsift[full]`:

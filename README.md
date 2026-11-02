@@ -65,7 +65,7 @@ pip install htmlsift[full]    # adds the base 311M model (torch; GPU-capable)
 ```
 
 - **`htmlsift`** — the `mini` model only; few dependencies (onnxruntime + tokenizers + lxml +
-  numpy + huggingface-hub). First use downloads ~230 MB of model files.
+  numpy + huggingface-hub + w3lib). First use downloads ~230 MB of model files.
 - **`htmlsift[full]`** — adds `torch` + `transformers` to run `base`. First use of `base`
   downloads ~1 GB.
 
@@ -91,6 +91,22 @@ Module-level convenience (cached singleton):
 import htmlsift
 htmlsift.extract(html)               # default mini
 ```
+
+### Bytes and encodings
+
+Pass raw bytes from a file, an HTTP response or a WARC record, and htmlsift decodes them:
+
+```python
+ex.extract(response.content)                       # charset from the page itself
+ex.extract(payload, encoding="windows-1251")       # charset from the HTTP / WARC header
+```
+
+The charset is taken from, in order: a byte order mark, `encoding=`, the page's
+`<meta charset>`; an undeclared page is read as utf-8, falling back to cp1252. Unknown
+labels are skipped and undecodable bytes become `�`. A `str` counts as already decoded, so
+`encoding=` with a `str` raises `TypeError`. Prefer passing bytes over a `str` decoded
+upstream: `requests`' `response.text`, for one, guesses ISO-8859-1 for pages without a
+charset header.
 
 The larger model, from the `[full]` install:
 
