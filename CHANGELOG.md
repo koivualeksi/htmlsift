@@ -17,6 +17,10 @@ All notable changes to htmlsift are documented here. The format follows
   `html` and `markdown` output are made absolute against it. The page's first
   `<base href>` is resolved against `base_url`; malformed links are left as they are.
   `text` output and `with_blocks` are unaffected.
+- `htmlsift extract` command: files, quoted globs or stdin in; the content of a single
+  input, or one JSON line per file (`--jsonl` to force), out. Flags `--output`,
+  `--mode`, `--device`, `--base-url`, `--encoding`. Failed files are reported as
+  records and the run exits with 1.
 
 ### Changed
 - Input other than `str` or `bytes` raises `TypeError`; `extract(None)` previously

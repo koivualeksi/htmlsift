@@ -97,6 +97,18 @@ ex = Extractor("base", device="cuda")  # require the GPU
 | `html` | selected DOM, with structure / links / images kept |
 | `markdown` | clean markdown, links and images preserved |
 
+## Command line
+
+```bash
+htmlsift extract page.html                          # main content of one page
+curl -s https://example.com/a | htmlsift extract - --base-url https://example.com/a
+htmlsift extract "crawl/*.html" --output markdown > out.jsonl   # one JSON line per file
+```
+
+Flags: `--output`, `--mode`, `--device`, `--base-url`, `--encoding`, `--jsonl` (records
+even for a single file). Failed files become `{"path", "error"}` records and the exit code
+is 1. Output is utf-8.
+
 ## License
 
 Apache-2.0. Model weights are distributed from the Hugging Face Hub, also under Apache-2.0, and
