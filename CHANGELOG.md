@@ -6,6 +6,22 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `extract()` accepts `bytes` and decodes them: byte order mark, then `encoding=`, then the
+  page's `<meta>` declaration, then utf-8, falling back to cp1252. Legacy charset labels map
+  the way browsers read them (`latin1` → cp1252, `shift_jis` → cp932, `gb2312` → gb18030).
+- Keyword-only `encoding=` on `Extractor.extract` and `extract`, for a charset known from
+  an HTTP or WARC header.
+- Dependency: `w3lib` (BSD-3-Clause) for charset sniffing.
+
+### Changed
+- Input other than `str` or `bytes` raises `TypeError`; `extract(None)` previously
+  returned `""`.
+- `encoding=` with `str` input raises `TypeError`, since a `str` is already decoded.
+
+### Fixed
+- Non-utf-8 `bytes` input crashed with `UnicodeDecodeError`.
+
 ## [0.1.1] - 2026-09-23
 
 Documentation and packaging metadata only — no code or model changes since 0.1.0.

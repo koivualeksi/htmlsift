@@ -30,3 +30,24 @@ def test_mini_rejects_gpu():
     # mini is CPU-only; the guard raises before any bundle fetch, so no bundle/GPU needed.
     with pytest.raises(ValueError):
         load_model("mini", device="cuda")
+
+
+@pytest.mark.parametrize("bad", [None, bytearray(b"<p>x</p>"), 42])
+def test_non_str_bytes_rejected(bad):
+    with pytest.raises(TypeError):
+        extract(bad)
+
+
+def test_str_with_encoding_rejected():
+    with pytest.raises(TypeError):
+        Extractor().extract("", encoding="utf-8")
+
+
+@pytest.mark.parametrize("html", [b"", b"  \n", b"\xef\xbb\xbf"])
+def test_empty_bytes(html):
+    assert extract(html) == ""
+
+
+def test_encoding_is_keyword_only():
+    with pytest.raises(TypeError):
+        Extractor().extract(b"", "text", False, "utf-8")
