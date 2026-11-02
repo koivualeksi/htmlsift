@@ -13,11 +13,18 @@ All notable changes to htmlsift are documented here. The format follows
 - Keyword-only `encoding=` on `Extractor.extract` and `extract`, for a charset known from
   an HTTP or WARC header.
 - Dependency: `w3lib` (BSD-3-Clause) for charset sniffing.
+- Keyword-only `base_url=` on `Extractor.extract` and `extract`: links and image URLs in
+  `html` and `markdown` output are made absolute against it. The page's first
+  `<base href>` is resolved against `base_url`; malformed links are left as they are.
+  `text` output and `with_blocks` are unaffected.
 
 ### Changed
 - Input other than `str` or `bytes` raises `TypeError`; `extract(None)` previously
   returned `""`.
 - `encoding=` with `str` input raises `TypeError`, since a `str` is already decoded.
+- A page with an absolute `<base href>` gets absolute links in `html` and `markdown` output
+  even without `base_url`. Previously `<base>` was dropped with `<head>`, leaving its links
+  relative.
 
 ### Fixed
 - Non-utf-8 `bytes` input crashed with `UnicodeDecodeError`.

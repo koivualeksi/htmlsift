@@ -108,6 +108,20 @@ labels are skipped and undecodable bytes become `�`. A `str` counts as already
 upstream: `requests`' `response.text`, for one, guesses ISO-8859-1 for pages without a
 charset header.
 
+### Absolute links
+
+Pass the page's URL to make links and image URLs absolute in `html` and `markdown` output:
+
+```python
+ex.extract(html, output="markdown", base_url="https://example.com/blog/post")
+# [the report](report)  ->  [the report](https://example.com/blog/report)
+```
+
+The page's first `<base href>` is resolved against `base_url`, as a browser does. Without
+`base_url`, an absolute `<base href>` is used on its own; with neither, links stay as they
+are. Malformed links are left unchanged. `text` output has no links, so it ignores
+`base_url`.
+
 The larger model, from the `[full]` install:
 
 ```python
@@ -216,6 +230,9 @@ and its `docs/REPRODUCE.md`.
 
 A standalone hero image that is its own block renders to no text line, so it can't be selected
 today. Inline images inside a kept block are preserved in `html` and `markdown`.
+
+`base_url` does not rewrite `srcset`, so responsive images in `html` output keep relative
+candidates (`src` is rewritten; `markdown` uses only `src`).
 
 </details>
 

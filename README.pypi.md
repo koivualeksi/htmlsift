@@ -73,6 +73,13 @@ ex.extract(response.content)                       # charset from the page itsel
 ex.extract(payload, encoding="windows-1251")       # charset from the HTTP / WARC header
 ```
 
+Make links and image URLs absolute in `html` / `markdown` output (the page's `<base href>`
+is honoured):
+
+```python
+ex.extract(html, output="markdown", base_url="https://example.com/blog/post")
+```
+
 The larger model, from `htmlsift[full]`:
 
 ```python
