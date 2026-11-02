@@ -166,6 +166,35 @@ Composite image showing the global distribution of photosynthesis, including bot
 | `markdown` | clean markdown, links and images preserved |
 
 
+## Command line
+
+```bash
+htmlsift extract page.html                          # main content of one page
+htmlsift extract page.html --output markdown --base-url https://example.com/page
+curl -s https://example.com/a | htmlsift extract - --base-url https://example.com/a
+htmlsift extract "crawl/*.html" > out.jsonl         # one JSON record per file
+htmlsift extract "crawl/**/*.html" --mode base --device cuda > out.jsonl
+```
+
+One file or `-` (stdin) prints the content itself. Several files or a glob print one JSON
+line per file, `{"path": ..., "content": ...}`, or `{"path": ..., "error": ...}` for a file
+that failed; the run continues and exits with 1 at the end. Pass `--jsonl` to get records
+for a single file too, which scripts should do: bash expands an unquoted `*.html` before
+htmlsift sees it. Quoted globs are expanded by htmlsift itself (`**` recurses), so they
+work the same in every shell; directories are not walked.
+
+| flag | |
+|---|---|
+| `--output text\|html\|markdown` | as `output=` above (default `text`) |
+| `--mode mini\|base`, `--device` | model and torch device, as for `Extractor` |
+| `--base-url URL` | make links absolute; applies to every input |
+| `--encoding ENC` | charset of the input bytes; applies to every input |
+| `--jsonl` | always print JSON records |
+
+Files are read as bytes, so the charset is detected as described above. Output is utf-8.
+Exit codes: 0 ok, 1 a file or the model failed, 2 a usage error. In Windows PowerShell 5.1,
+`>` re-encodes a program's output; redirect from bash, cmd or PowerShell 7 instead.
+
 ## Concept
 
 <details>
