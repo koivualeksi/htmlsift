@@ -32,6 +32,8 @@ All notable changes to htmlsift are documented here. The format follows
 
 ### Fixed
 - Non-utf-8 `bytes` input crashed with `UnicodeDecodeError`.
+- `html` and `markdown` output could drop images and other inline content inside a kept
+  block, varying from run to run on the same page. `text` output was unaffected.
 
 ## [0.1.1] - 2026-09-23
 
