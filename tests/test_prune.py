@@ -1,5 +1,6 @@
 """Pruner unit tests (no bundle): mark elements, assert the pruned/serialized tree keeps
 exactly the marked subtrees + their ancestors + descendants and drops the rest."""
+import pytest
 from lxml import html as lxml_html
 
 from htmlsift.core.prune import keep_set, prune, to_html
@@ -36,3 +37,22 @@ def test_two_marks_under_one_container_both_survive():
 
 def test_keep_set_empty():
     assert keep_set([]) == set()
+
+
+@pytest.mark.parametrize("child_first", [False, True])
+def test_keep_set_independent_of_order(child_first):
+    root = lxml_html.fromstring(
+        '<body><main><p>Read <a href="/x">this</a> <img src="i.png"></p></main>'
+        "<nav>n</nav></body>")
+    p, a, img = root.find(".//p"), root.find(".//a"), root.find(".//img")
+    marks = [a, p] if child_first else [p, a]
+    assert keep_set(marks) == {*p.iterancestors(), p, a, img}
+
+
+def test_extract_html_keeps_every_inline_image(keep_all):
+    n = 50
+    body = "".join(f'<p>Read <a href="/x{i}">this</a> <img src="i{i}.png"></p>'
+                   for i in range(n))
+    out = keep_all.extract(f"<html><body>{body}</body></html>", output="html")
+    missing = [i for i in range(n) if f'src="i{i}.png"' not in out]
+    assert missing == []

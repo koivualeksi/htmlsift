@@ -1,10 +1,6 @@
 """Base URL resolution, link rewriting, and base_url through extract() (no bundle)."""
-from types import SimpleNamespace
-
-import numpy as np
 import pytest
 
-from htmlsift import Extractor
 from htmlsift._links import effective_base, make_absolute
 from htmlsift.core.render import parse
 
@@ -119,16 +115,6 @@ def test_make_absolute_leaves_srcset():
     root = parse('<p><img src="a.png" srcset="a-2x.png 2x"></p>')
     make_absolute(root, PAGE)
     assert root.find(".//img").get("srcset") == "a-2x.png 2x"
-
-
-@pytest.fixture
-def keep_all(monkeypatch):
-    """An Extractor whose dummy model scores every line 1.0."""
-    monkeypatch.setattr("htmlsift.extractor.prep_page", lambda tok, blocks, *a, **k: blocks)
-    ex = Extractor()
-    ex._model = SimpleNamespace(features=lambda lines, src: None, tok=None, window=0, cap=0,
-                                infer_fn=lambda blocks: np.ones(len(blocks), dtype=np.float32))
-    return ex
 
 
 def _page(head=""):
