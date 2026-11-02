@@ -51,3 +51,14 @@ def test_empty_bytes(html):
 def test_encoding_is_keyword_only():
     with pytest.raises(TypeError):
         Extractor().extract(b"", "text", False, "utf-8")
+
+
+@pytest.mark.parametrize("bad", [b"https://x.org/", 42])
+def test_non_str_base_url_rejected(bad):
+    with pytest.raises(TypeError):
+        extract("", base_url=bad)
+
+
+def test_base_url_is_keyword_only():
+    with pytest.raises(TypeError):
+        Extractor().extract("", "text", False, None, "https://x.org/")

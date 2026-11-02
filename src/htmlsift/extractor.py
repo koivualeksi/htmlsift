@@ -4,10 +4,12 @@ over threshold, serialize. Mirrors the research inference front-end (render_bloc
 prep_page + threshold); no sanitize step.
 """
 import numpy as np
+from lxml import html as lxml_html
 
 from ._decode import prepare_input
+from ._links import effective_base, make_absolute
 from .core.prep_page import prep_page
-from .core.prune import prune, to_html
+from .core.prune import prune
 from .core.render import parse, render_tree
 from .loader import load_model
 
@@ -37,27 +39,33 @@ class Extractor:
                                      threads=self._threads, device=self._device)
         return self._model
 
-    def extract(self, html, output="text", with_blocks=False, *, encoding=None):
+    def extract(self, html, output="text", with_blocks=False, *, encoding=None, base_url=None):
         """Extract main content from HTML, given as str or bytes.
 
         bytes are decoded by BOM, then encoding= (e.g. an HTTP or WARC charset), then the
         page's <meta> declaration, then utf-8 / cp1252. encoding= with str raises TypeError.
         output="text" joins the selected lines; output="html" prunes the DOM to the
         selected blocks (structure, links, images kept) and serializes. with_blocks=True
-        returns (blocks, probs) -- every block and its probability, unthresholded."""
+        returns (blocks, probs) -- every block and its probability, unthresholded.
+        base_url= makes links absolute in html/markdown output; the page's first
+        <base href> is resolved against it, or used alone if absolute."""
+        if base_url is not None and not isinstance(base_url, str):
+            raise TypeError(f"base_url must be str or None, not {type(base_url).__name__}")
         root, blocks, block_src, probs = self._predict(html, encoding)
         if with_blocks:
             return blocks, probs
         if output == "text":
             return "\n".join(b for b, p in zip(blocks, probs, strict=True) if p > THRESHOLD)
-        if output == "html":
-            selected = _selected_srcs(block_src, probs)
-            return to_html(root, selected) if selected else ""
-        if output == "markdown":
+        if output in ("html", "markdown"):
             selected = _selected_srcs(block_src, probs)
             if not selected:
                 return ""
+            base = effective_base(root, base_url)
             prune(root, selected)
+            if base:
+                make_absolute(root, base)
+            if output == "html":
+                return lxml_html.tostring(root, encoding="unicode")
             lines, _ = render_tree(root, links=True)
             return "\n".join(lines).strip("\n")
         raise ValueError(f"unknown output {output!r}; expected 'text', 'html', or 'markdown'")
@@ -87,9 +95,11 @@ class Extractor:
 _CACHE = {}
 
 
-def extract(html, mode="mini", output="text", with_blocks=False, *, encoding=None):
+def extract(html, mode="mini", output="text", with_blocks=False, *, encoding=None,
+            base_url=None):
     """Module-level convenience: extract with a per-mode cached Extractor."""
     ex = _CACHE.get(mode)
     if ex is None:
         ex = _CACHE[mode] = Extractor(mode)
-    return ex.extract(html, output=output, with_blocks=with_blocks, encoding=encoding)
+    return ex.extract(html, output=output, with_blocks=with_blocks, encoding=encoding,
+                      base_url=base_url)
