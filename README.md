@@ -2,7 +2,7 @@
 
 Main-content extraction for web pages: hand it a raw HTML string and get back the main content
  - nav, ads, cookie banners, and footers stripped
- - outputs raw text, **HTML**, or **markdown**.
+ - outputs plain text, **HTML**, or **markdown**.
 
 Two models shipped, both trained on [WebMainBench][wmb] (WMB) — 7,825 labelled pages, custom split
 6,548 train / 732 val / 545 test:
@@ -161,9 +161,17 @@ Composite image showing the global distribution of photosynthesis, including bot
 
 | `output` | what you get |
 |---|---|
-| `text` (default) | selected content as plain text |
+| `text` (default) | selected content as plain text: no heading, emphasis, code, quote, rule or fence markers; list bullets, ordered-list numbers and table rows (`\| a \| b \|`) stay |
 | `html` | selected DOM, with structure / links / images kept |
 | `markdown` | clean markdown, links and images preserved |
+
+The lines exactly as the model scored them, markdown markers included, come from
+`with_blocks=True`:
+
+```python
+blocks, probs = ex.extract(html, with_blocks=True)
+scored = "\n".join(b for b, p in zip(blocks, probs) if p > 0.5)
+```
 
 
 ## Command line
