@@ -10,13 +10,45 @@ import errno
 import glob
 import json
 import os
+import platform
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from w3lib.encoding import resolve_encoding
 
+from . import __version__
 from ._artifacts import BUNDLE_FILES, resolve_bundle
 from .extractor import Extractor
+from .loader import BASE_DEPS, FULL_INSTALL
+
+
+def _dist_version(name):
+    try:
+        return version(name)
+    except PackageNotFoundError:
+        return None
+
+
+def _version_text():
+    """htmlsift, Python and backend versions, read from package metadata (no imports)."""
+    def backend(mode, deps):
+        found = {d: _dist_version(d) for d in deps}
+        line = f"{mode}: " + ", ".join(f"{d} {v or 'not installed'}" for d, v in found.items())
+        return line if all(found.values()) else f"{line} ({FULL_INSTALL})"
+    return "\n".join([f"htmlsift {__version__}",
+                      f"python {platform.python_version()}",
+                      backend("mini", ["onnxruntime"]),
+                      backend("base", BASE_DEPS)]) + "\n"
+
+
+class _Version(argparse.Action):
+    def __init__(self, option_strings, dest, **kwargs):
+        super().__init__(option_strings, dest, nargs=0, help="print versions and exit")
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        sys.stdout.write(_version_text())
+        parser.exit()
 
 
 def _download(mode):
@@ -105,6 +137,7 @@ def _extract(ap, args):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="htmlsift")
+    ap.add_argument("--version", action=_Version)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     dl = sub.add_parser("download", help="prefetch a model bundle into the HF cache")

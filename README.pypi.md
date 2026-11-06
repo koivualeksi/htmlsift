@@ -111,6 +111,7 @@ scored = "\n".join(b for b, p in zip(blocks, probs) if p > 0.5)
 htmlsift extract page.html                          # main content of one page
 curl -s https://example.com/a | htmlsift extract - --base-url https://example.com/a
 htmlsift extract "crawl/*.html" --output markdown > out.jsonl   # one JSON line per file
+htmlsift --version                                  # htmlsift, Python and backend versions
 ```
 
 Flags: `--output`, `--mode`, `--device`, `--base-url`, `--encoding`, `--jsonl` (records

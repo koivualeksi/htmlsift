@@ -3,10 +3,12 @@ and exit codes. No model bundle needed.
 """
 import io
 import json
+import platform
 from types import SimpleNamespace
 
 import pytest
 
+from htmlsift import __version__
 from htmlsift.cli import main
 
 
@@ -153,6 +155,28 @@ def test_base_without_deps_hint(monkeypatch, tmp_path, capfd):
     assert (code, out) == (1, "")
     assert err == ("htmlsift: cannot load model: mode='base' needs torch, transformers: "
                    'pip install "htmlsift[full]"\n')
+
+
+def _version(monkeypatch, capsys, installed):
+    monkeypatch.setattr("htmlsift.cli._dist_version", lambda name: installed.get(name))
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    return capsys.readouterr().out.splitlines()
+
+
+def test_version_all_installed(monkeypatch, capsys):
+    lines = _version(monkeypatch, capsys, {"onnxruntime": "1.2", "torch": "3.4",
+                                           "transformers": "5.6"})
+    assert lines == [f"htmlsift {__version__}", f"python {platform.python_version()}",
+                     "mini: onnxruntime 1.2", "base: torch 3.4, transformers 5.6"]
+
+
+def test_version_base_missing(monkeypatch, capsys):
+    lines = _version(monkeypatch, capsys, {"onnxruntime": "1.2", "torch": "3.4"})
+    assert lines[2:] == ["mini: onnxruntime 1.2",
+                         'base: torch 3.4, transformers not installed '
+                         '(pip install "htmlsift[full]")']
 
 
 @pytest.mark.parametrize("argv", [["-", "-"], ["a.html", "--encoding", "bogus"]])
