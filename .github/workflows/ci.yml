@@ -4,13 +4,20 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 4 * * 1"   # Mondays 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.13"]   # floor + latest
+        python-version: ["3.10", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,7 +25,26 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install (base deps only, no torch)
         run: pip install -e . ruff pytest
+      - name: Show installed versions
+        run: pip list
       - name: Lint
         run: ruff check src tests
-      - name: Test (model goldens skip without HTMLSIFT_BUNDLE)
-        run: pytest -q
+      - name: Read pinned bundle revision
+        id: rev
+        run: |
+          rev=$(sed -n 's/^REVISION = "\([0-9a-f]\{40\}\)".*/\1/p' src/htmlsift/_artifacts.py)
+          test -n "$rev" || { echo "REVISION not found in _artifacts.py"; exit 1; }
+          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+      - name: Cache mini bundle
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: htmlsift-mini-${{ steps.rev.outputs.rev }}
+      - name: Fetch mini bundle (no network on a cache hit)
+        run: |
+          htmlsift download mini
+          dir="$HOME/.cache/huggingface/hub/models--koivualeksi--htmlsift-release/snapshots/${{ steps.rev.outputs.rev }}/mini"
+          test -f "$dir/manifest.json" || { echo "bundle not at $dir"; exit 1; }
+          echo "HTMLSIFT_BUNDLE=$dir" >> "$GITHUB_ENV"
+      - name: Test (model goldens included)
+        run: pytest -q -rs
