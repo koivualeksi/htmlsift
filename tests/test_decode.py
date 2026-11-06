@@ -1,11 +1,23 @@
 """decode_html: bytes -> str."""
 import pytest
+from w3lib.encoding import to_unicode
 
 from htmlsift._decode import decode_html, prepare_input
 
 FI = "<p>Päivää “hei”</p>"
 RU = "<p>Привет, мир</p>"
 R = "\ufffd"
+
+# w3lib>=2.6 decodes like browsers: cp1252's five undefined bytes become C1 controls.
+WHATWG = to_unicode(b"\x81", "cp1252") == "\x81"
+
+
+def cp1252(data):
+    """data decoded as windows-1252 the way the installed w3lib does it."""
+    if WHATWG:
+        return "".join(chr(b) if b in b"\x81\x8d\x8f\x90\x9d" else bytes([b]).decode("cp1252")
+                       for b in data)
+    return data.decode("cp1252", errors="replace")
 
 
 def meta(charset):
@@ -67,7 +79,7 @@ def test_encoding_arg_whitespace_stripped():
 
 def test_encoding_arg_latin1_is_cp1252():
     data = FI.encode()
-    assert decode_html(data, encoding="latin1") == data.decode("cp1252", errors="replace")
+    assert decode_html(data, encoding="latin1") == cp1252(data)
 
 
 def test_unknown_encoding_arg_falls_through_to_meta():
@@ -88,7 +100,7 @@ def test_meta_cp1251():
 
 def test_meta_iso_8859_1_is_cp1252():
     data = (meta("iso-8859-1") + FI).encode()
-    assert decode_html(data) == data.decode("cp1252", errors="replace")
+    assert decode_html(data) == cp1252(data)
 
 
 def test_meta_http_equiv_content_first():
@@ -128,8 +140,8 @@ def test_undeclared_cp1252():
     assert decode_html(FI.encode("cp1252")) == FI
 
 
-def test_cp1252_undefined_byte_replaced():
-    assert decode_html(b"<p>a\x81b</p>", encoding="windows-1252") == f"<p>a{R}b</p>"
+def test_cp1252_undefined_byte():
+    assert decode_html(b"<p>a\x81b</p>", encoding="windows-1252") == cp1252(b"<p>a\x81b</p>")
 
 
 # prepare_input
