@@ -100,6 +100,9 @@ def _cell_text(el):
 class _Renderer:
     """Accumulates output lines and, per line, the set of source elements."""
 
+    HR = "* * *"
+    FENCE = "```"
+
     def __init__(self, render_hidden=False, links=False):
         self.render_hidden = render_hidden
         self.links = links
@@ -116,6 +119,15 @@ class _Renderer:
 
     def _qpfx(self):
         return "> " * self.quote
+
+    def _heading_pfx(self, level):
+        return "#" * level + " "
+
+    def _cell(self, txt):
+        return txt
+
+    def _wrap(self, el, open_s, inner, close_s):
+        return open_s + inner + close_s
 
     def _append(self, line, src):
         self.swallow = False
@@ -180,10 +192,10 @@ class _Renderer:
         elif tag == "br":
             self.flush()
         elif tag == "hr":
-            self.blank(); self.emit("* * *", {el}); self.blank()
+            self.blank(); self.emit(self.HR, {el}); self.blank()
         elif tag in HEADING_TAGS:
             self.blank()
-            self.linepfx = "#" * HEADING_TAGS[tag] + " "
+            self.linepfx = self._heading_pfx(HEADING_TAGS[tag])
             self.inner_keeping_lead(el)
             self.blank()
         elif tag in LIST_TAGS:
@@ -210,7 +222,7 @@ class _Renderer:
             open_s, close_s = WRAP_TAGS[tag]
             inner = _sub_inline(el, self.render_hidden, self.links)
             if inner:
-                self.raw(open_s + inner + close_s, el)
+                self.raw(self._wrap(el, open_s, inner, close_s), el)
             else:
                 self.swallow = True
         elif tag == "a" and self.links and el.get("href"):
@@ -256,10 +268,10 @@ class _Renderer:
 
     def pre(self, el):
         self.blank()
-        self._append("```", {el})
+        self._append(self.FENCE, {el})
         for line in el.text_content().split("\n"):
             self._append(line, {el})
-        self._append("```", {el})
+        self._append(self.FENCE, {el})
         self.blank()
 
     def table(self, el):
@@ -288,7 +300,7 @@ class _Renderer:
             texts, src = [], {tr}
             for c in cells:
                 t, s = _cell_text(c)
-                texts.append(t); src |= s
+                texts.append(self._cell(t)); src |= s
             if not any(texts):                 # skip fully-empty rows
                 continue
             self.emit("| " + " | ".join(texts) + " |", src)
@@ -298,12 +310,40 @@ class _Renderer:
         self.blank()
 
 
-def _sub_inline(el, render_hidden=False, links=False):
-    sub = _Renderer(render_hidden, links); sub.children(el); sub.flush()
+class _PlainRenderer(_Renderer):
+    """The same walk and the same lines as _Renderer, without markdown markers.
+    Output only; list bullets, ordered numbers and table pipes stay."""
+
+    HR = ""
+    FENCE = ""
+
+    def _qpfx(self):
+        return ""
+
+    def _heading_pfx(self, level):
+        return ""
+
+    def _cell(self, txt):
+        return txt.replace("\\|", "|")
+
+    def _wrap(self, el, open_s, inner, close_s):
+        # The markdown inner decided that a chunk exists; this one may be "" (<b><hr></b>).
+        return _sub_inline(el, self.render_hidden, self.links, _PlainRenderer)
+
+    def text(self, s, src):
+        lead = self.keep_lead and not self.linepfx and not any(self.buf)
+        super().text(s, src)
+        if lead and self.buf:
+            # Heading lead space; the chunk stays in buf so the line is still emitted.
+            self.buf[-1] = self.buf[-1].lstrip()
+
+
+def _sub_inline(el, render_hidden=False, links=False, cls=_Renderer):
+    sub = cls(render_hidden, links); sub.children(el); sub.flush()
     return " ".join(ln.strip() for ln in sub.lines if ln.strip())
 
 
-def render_tree(root, render_hidden=False, links=False):
+def render_tree(root, render_hidden=False, links=False, plain=False):
     """Walk a parsed tree -> (lines, line_src). line_src[i] is the set of source
     DOM elements that produced line i (empty for structural separators).
 
@@ -314,15 +354,19 @@ def render_tree(root, render_hidden=False, links=False):
 
     links=True renders <a>/<img> as markdown ([text](href), ![alt](src)) -- an
     output-only mode. The model-input render keeps links=False (link-flattened) so
-    training still matches; only serialization sets links=True."""
-    r = _Renderer(render_hidden, links); r.walk(root); r.flush()
+    training still matches; only serialization sets links=True.
+
+    plain=True renders the same lines without markdown markers (headings, emphasis,
+    code, quotes, rules, fences) -- output-only, like links."""
+    cls = _PlainRenderer if plain else _Renderer
+    r = cls(render_hidden, links); r.walk(root); r.flush()
     return r.lines, r.line_src
 
 
-def render(html_str, render_hidden=False, links=False):
+def render(html_str, render_hidden=False, links=False, plain=False):
     """HTML string -> readable markdown text (inference; provenance discarded).
     Does not sanitize — a caller that needs it sanitizes the tree first."""
     if not html_str or not html_str.strip():
         return ""
-    lines, _ = render_tree(parse(html_str), render_hidden, links)
+    lines, _ = render_tree(parse(html_str), render_hidden, links, plain)
     return "\n".join(lines) + "\n"
