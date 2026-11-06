@@ -6,6 +6,11 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- With w3lib 2.6 or newer, the five bytes windows-1252 leaves undefined (`0x81`, `0x8D`,
+  `0x8F`, `0x90`, `0x9D`) decode to C1 control characters, as in browsers, instead of
+  `U+FFFD`.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added
