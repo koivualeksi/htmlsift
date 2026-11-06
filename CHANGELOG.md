@@ -10,6 +10,15 @@ All notable changes to htmlsift are documented here. The format follows
 - With w3lib 2.6 or newer, the five bytes windows-1252 leaves undefined (`0x81`, `0x8D`,
   `0x8F`, `0x90`, `0x9D`) decode to C1 control characters, as in browsers, instead of
   `U+FFFD`.
+- `output="text"` (the default) returns plain text, as documented. Heading `#`, emphasis,
+  inline-code and strikethrough markers, `>` quote prefixes, `* * *` rules and code-fence
+  lines are no longer in it; list bullets, ordered-list numbers and table rows stay.
+  Literal `#`, `*`, `_` or `|` in the page text are kept. The selected content is the
+  same as in 0.2.0, and the model input and predictions are unchanged.
+- `text` output renders the page a second time, without markers: about 3 ms per page
+  more on one CPU core (mini, measured on CommonCrawl pages).
+- The lines as the model scored them, markers included, are still available through
+  `with_blocks=True`.
 
 ## [0.2.0] - 2026-11-02
 
