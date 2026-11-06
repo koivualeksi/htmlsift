@@ -140,6 +140,21 @@ def test_model_load_failure(run, monkeypatch, tmp_path):
     assert err == "htmlsift: cannot load model: no bundle\n"
 
 
+def test_base_without_deps_hint(monkeypatch, tmp_path, capfd):
+    """Real Extractor: the missing-deps hint reaches stderr and no bundle is fetched."""
+    (tmp_path / "a.html").write_text("<p>A</p>")
+    monkeypatch.setattr("htmlsift.loader.find_spec", lambda name: None)
+
+    def no_download(*a, **k):
+        raise AssertionError("bundle fetched")
+    monkeypatch.setattr("htmlsift.loader.resolve_bundle", no_download)
+    code = main(["extract", str(tmp_path / "a.html"), "--mode", "base"])
+    out, err = capfd.readouterr()
+    assert (code, out) == (1, "")
+    assert err == ("htmlsift: cannot load model: mode='base' needs torch, transformers: "
+                   'pip install "htmlsift[full]"\n')
+
+
 @pytest.mark.parametrize("argv", [["-", "-"], ["a.html", "--encoding", "bogus"]])
 def test_usage_errors(run, argv):
     with pytest.raises(SystemExit) as exc:

@@ -20,6 +20,12 @@ All notable changes to htmlsift are documented here. The format follows
 - The lines as the model scored them, markers included, are still available through
   `with_blocks=True`.
 
+### Fixed
+- `mode="base"` without torch or transformers installed raised a bare
+  `No module named 'torch'`, and only after downloading the ~1 GB base bundle. It now
+  raises `ImportError` before any download, naming the missing packages and
+  `pip install "htmlsift[full]"`. The CLI prints the same message.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added
