@@ -62,3 +62,17 @@ def test_non_str_base_url_rejected(bad):
 def test_base_url_is_keyword_only():
     with pytest.raises(TypeError):
         Extractor().extract("", "text", False, None, "https://x.org/")
+
+
+PLAIN_PAGE = ("<html><body><h1>Title</h1><p>Some <b>bold</b> text.</p>"
+              "<blockquote><p>Quoted.</p></blockquote><ol><li>first</li></ol>"
+              "<pre>x = 1</pre><hr></body></html>")
+
+
+def test_text_is_plain(keep_all):
+    assert keep_all.extract(PLAIN_PAGE) == "Title\nSome bold text.\nQuoted.\n1. first\nx = 1"
+
+
+def test_with_blocks_keeps_markdown(keep_all):
+    blocks, _ = keep_all.extract(PLAIN_PAGE, with_blocks=True)
+    assert "# Title" in blocks and "Some **bold** text." in blocks
