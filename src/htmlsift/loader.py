@@ -4,12 +4,21 @@ mini path is torch-free end to end; the base path uses torch.
 """
 from collections.abc import Callable
 from dataclasses import dataclass
+from importlib.util import find_spec
 
 import numpy as np
 
 from ._artifacts import Manifest, resolve_bundle
 from .core.features import _zscore_idx, apply_zscore, collect_features
 from .core.tokenizer import FastTokenizer
+
+BASE_DEPS = ("torch", "transformers")
+FULL_INSTALL = 'pip install "htmlsift[full]"'
+
+
+def _missing(mods):
+    """The modules in `mods` that are not installed, found without importing them."""
+    return [m for m in mods if find_spec(m) is None]
 
 
 @dataclass
@@ -50,6 +59,8 @@ def load_model(mode="mini", bundle_dir=None, threads=None, device=None):
     if mode == "mini" and device not in (None, "cpu"):
         raise ValueError(
             f"mini runs on CPU only; use mode='base' for GPU (got device={device!r})")
+    if mode == "base" and (missing := _missing(BASE_DEPS)):
+        raise ImportError(f"mode='base' needs {', '.join(missing)}: {FULL_INSTALL}")
     paths = resolve_bundle(mode, local_dir=bundle_dir)
     manifest = Manifest.from_file(paths["manifest"])
     tok = FastTokenizer.from_file(paths["tokenizer"])

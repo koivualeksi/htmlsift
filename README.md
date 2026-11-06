@@ -182,6 +182,7 @@ htmlsift extract page.html --output markdown --base-url https://example.com/page
 curl -s https://example.com/a | htmlsift extract - --base-url https://example.com/a
 htmlsift extract "crawl/*.html" > out.jsonl         # one JSON record per file
 htmlsift extract "crawl/**/*.html" --mode base --device cuda > out.jsonl
+htmlsift --version                                  # htmlsift, Python and backend versions
 ```
 
 One file or `-` (stdin) prints the content itself. Several files or a glob print one JSON

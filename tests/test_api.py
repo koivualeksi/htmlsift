@@ -32,6 +32,22 @@ def test_mini_rejects_gpu():
         load_model("mini", device="cuda")
 
 
+@pytest.mark.parametrize("absent", [{"torch", "transformers"}, {"transformers"}])
+def test_base_without_deps_raises_before_download(monkeypatch, absent):
+    monkeypatch.setattr("htmlsift.loader.find_spec",
+                        lambda name: None if name in absent else object())
+
+    def no_download(*a, **k):
+        raise AssertionError("bundle fetched")
+    monkeypatch.setattr("htmlsift.loader.resolve_bundle", no_download)
+    with pytest.raises(ImportError) as exc:
+        load_model("base")
+    msg = str(exc.value)
+    assert 'pip install "htmlsift[full]"' in msg
+    assert all(m in msg for m in absent)
+    assert ("torch," in msg) == ("torch" in absent)
+
+
 @pytest.mark.parametrize("bad", [None, bytearray(b"<p>x</p>"), 42])
 def test_non_str_bytes_rejected(bad):
     with pytest.raises(TypeError):

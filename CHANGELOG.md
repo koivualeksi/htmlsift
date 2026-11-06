@@ -6,6 +6,10 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `htmlsift --version` prints the htmlsift and Python versions and the installed
+  backends: onnxruntime for `mini`, torch and transformers for `base`.
+
 ### Changed
 - With w3lib 2.6 or newer, the five bytes windows-1252 leaves undefined (`0x81`, `0x8D`,
   `0x8F`, `0x90`, `0x9D`) decode to C1 control characters, as in browsers, instead of
@@ -19,6 +23,12 @@ All notable changes to htmlsift are documented here. The format follows
   more on one CPU core (mini, measured on CommonCrawl pages).
 - The lines as the model scored them, markers included, are still available through
   `with_blocks=True`.
+
+### Fixed
+- `mode="base"` without torch or transformers installed raised a bare
+  `No module named 'torch'`, and only after downloading the ~1 GB base bundle. It now
+  raises `ImportError` before any download, naming the missing packages and
+  `pip install "htmlsift[full]"`. The CLI prints the same message.
 
 ## [0.2.0] - 2026-11-02
 

@@ -3,10 +3,12 @@ and exit codes. No model bundle needed.
 """
 import io
 import json
+import platform
 from types import SimpleNamespace
 
 import pytest
 
+from htmlsift import __version__
 from htmlsift.cli import main
 
 
@@ -138,6 +140,43 @@ def test_model_load_failure(run, monkeypatch, tmp_path):
     code, out, err = run("a.html", "b.html")
     assert (code, out) == (1, b"")
     assert err == "htmlsift: cannot load model: no bundle\n"
+
+
+def test_base_without_deps_hint(monkeypatch, tmp_path, capfd):
+    """Real Extractor: the missing-deps hint reaches stderr and no bundle is fetched."""
+    (tmp_path / "a.html").write_text("<p>A</p>")
+    monkeypatch.setattr("htmlsift.loader.find_spec", lambda name: None)
+
+    def no_download(*a, **k):
+        raise AssertionError("bundle fetched")
+    monkeypatch.setattr("htmlsift.loader.resolve_bundle", no_download)
+    code = main(["extract", str(tmp_path / "a.html"), "--mode", "base"])
+    out, err = capfd.readouterr()
+    assert (code, out) == (1, "")
+    assert err == ("htmlsift: cannot load model: mode='base' needs torch, transformers: "
+                   'pip install "htmlsift[full]"\n')
+
+
+def _version(monkeypatch, capsys, installed):
+    monkeypatch.setattr("htmlsift.cli._dist_version", lambda name: installed.get(name))
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    return capsys.readouterr().out.splitlines()
+
+
+def test_version_all_installed(monkeypatch, capsys):
+    lines = _version(monkeypatch, capsys, {"onnxruntime": "1.2", "torch": "3.4",
+                                           "transformers": "5.6"})
+    assert lines == [f"htmlsift {__version__}", f"python {platform.python_version()}",
+                     "mini: onnxruntime 1.2", "base: torch 3.4, transformers 5.6"]
+
+
+def test_version_base_missing(monkeypatch, capsys):
+    lines = _version(monkeypatch, capsys, {"onnxruntime": "1.2", "torch": "3.4"})
+    assert lines[2:] == ["mini: onnxruntime 1.2",
+                         'base: torch 3.4, transformers not installed '
+                         '(pip install "htmlsift[full]")']
 
 
 @pytest.mark.parametrize("argv", [["-", "-"], ["a.html", "--encoding", "bogus"]])
