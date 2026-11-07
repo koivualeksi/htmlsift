@@ -25,6 +25,9 @@ All notable changes to htmlsift are documented here. The format follows
   `with_blocks=True`.
 
 ### Fixed
+- `output="text"` no longer contains lines made only of invisible characters (zero-width
+  spaces and joiners, byte order marks, soft hyphens, control characters), which pages
+  use as spacers.
 - `mini` memory on very long pages. The embedding step no longer grows with page length
   (a 3M-token page peaked at 39 GB, now 1.2 GB), and pages estimated above 100 MB hand
   their memory back to the system when they finish instead of keeping it for the life
