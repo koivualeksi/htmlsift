@@ -1,21 +1,22 @@
 """Torch-free onnxruntime forward for the mini model (int8 table + BiGRU head).
 
-Embed the token ids through the int8 table graph, mean-pool by block membership,
-concat any structural features, run the head graph, sigmoid. numpy + onnxruntime only
--- no torch. Lifted unchanged from the research export so it stays bit-identical to the
-graphs' parity-gated reference forward.
+Embed the page's distinct token ids through the int8 table graph, mean-pool by block
+membership, concat any structural features, run the head graph, sigmoid. numpy +
+onnxruntime only -- no torch. The table is a per-id lookup, so embedding each distinct id
+once gives the same rows as embedding every token, and memory scales with the page's
+vocabulary instead of its length.
 """
 import numpy as np
 import onnxruntime as ort
 
 
-def pool(emb, members):
-    """Token embeddings emb [T, H] -> per-block mean vectors [n, H]. A token-less block
-    pools to zeros (sum of nothing / 1)."""
-    pooled = np.zeros((len(members), emb.shape[1]), dtype=np.float32)
+def pool(emb_u, inv, members):
+    """Per-block mean of the member tokens' embeddings -> [n, H]. emb_u holds one row
+    per distinct id and emb_u[inv[t]] is token t's. A token-less block pools to zeros."""
+    pooled = np.zeros((len(members), emb_u.shape[1]), dtype=np.float32)
     for i, mem in enumerate(members):
         if mem:
-            pooled[i] = emb[mem].mean(0)
+            pooled[i] = emb_u[inv[mem]].mean(0)
     return pooled
 
 
@@ -29,8 +30,9 @@ def load_mini(table_path, head_path, threads=None):
     head = ort.InferenceSession(str(head_path), opts, providers=["CPUExecutionProvider"])
 
     def infer_fn(page):
-        emb = table.run(["out"], {"ids": page["ids"].astype(np.int64)})[0]     # [T, H]
-        x = pool(emb, page["members"])                                         # [n, H]
+        uniq, inv = np.unique(page["ids"], return_inverse=True)
+        emb_u = table.run(["out"], {"ids": uniq.astype(np.int64)})[0]          # [U, H]
+        x = pool(emb_u, inv, page["members"])                                  # [n, H]
         if page.get("feats") is not None:
             x = np.concatenate([x, page["feats"].astype(np.float32)], 1)       # [n, H+K]
         logits = head.run(["logits"], {"x": x[None]})[0][0]                    # [n]
