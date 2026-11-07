@@ -3,6 +3,8 @@ runs one pipeline per call -- parse, render to lines, score each line, keep the 
 over threshold, serialize. Mirrors the research inference front-end (render_blocks +
 prep_page + threshold); no sanitize step.
 """
+import unicodedata
+
 import numpy as np
 from lxml import html as lxml_html
 
@@ -14,6 +16,13 @@ from .core.render import parse, render_tree
 from .loader import load_model
 
 THRESHOLD = 0.5
+_INVISIBLE = frozenset({"Cc", "Cf", "Zs", "Zl", "Zp"})
+_FILLERS = frozenset("ᅟᅠㅤﾠ⠀")
+
+
+def _visible(line):
+    """True if the line has a character that renders as a glyph."""
+    return any(c not in _FILLERS and unicodedata.category(c) not in _INVISIBLE for c in line)
 
 
 def _selected_srcs(block_src, probs):
@@ -29,7 +38,7 @@ def _plain_text(root, block_line, n_lines, probs):
     plain, _ = render_tree(root, plain=True)
     if len(plain) != n_lines:
         raise RuntimeError(f"plain render has {len(plain)} lines, model render {n_lines}")
-    return "\n".join(s for s in (plain[i].rstrip() for i in sel) if s.strip())
+    return "\n".join(s for s in (plain[i].rstrip() for i in sel) if _visible(s))
 
 
 class Extractor:
