@@ -4,6 +4,7 @@ the model loads, so these exercise the public contract with no network or weight
 import pytest
 
 from htmlsift import Extractor, extract
+from htmlsift.extractor import _visible
 from htmlsift.loader import load_model
 
 
@@ -87,6 +88,43 @@ PLAIN_PAGE = ("<html><body><h1>Title</h1><p>Some <b>bold</b> text.</p>"
 
 def test_text_is_plain(keep_all):
     assert keep_all.extract(PLAIN_PAGE) == "Title\nSome bold text.\nQuoted.\n1. first\nx = 1"
+
+
+def test_text_drops_invisible_lines(keep_all):
+    page = ("<p>Real text.</p><p>​</p><p>‍﻿</p><p>&shy;</p>"
+            "<p>ㅤ</p><p>Second.</p>")
+    assert keep_all.extract(page) == "Real text.\nSecond."
+
+
+KEPT_AS_IS = [
+    "\U0001f468‍\U0001f469‍\U0001f467",
+    "می‌خواهم",
+    "क्‍ष",
+    "word​word",
+]
+
+
+@pytest.mark.parametrize("text", KEPT_AS_IS)
+def test_text_keeps_zero_width_inside_content(keep_all, text):
+    assert keep_all.extract(f"<p>{text}</p>") == text
+
+
+def test_text_all_invisible_is_empty(keep_all):
+    assert keep_all.extract("<p>​</p><p>⠀</p>") == ""
+
+
+@pytest.mark.parametrize("line", [
+    "​", "‌", "‍", "⁠", "﻿", "­", "‎", "\x81",
+    " ", "　", "ᅟ", "ᅠ", "ㅤ", "ﾠ", "⠀",
+    " ​\t‍ ", "",
+])
+def test_invisible(line):
+    assert not _visible(line)
+
+
+@pytest.mark.parametrize("line", ["a", "-", "1.", "|", "漢", "​x"])
+def test_visible(line):
+    assert _visible(line)
 
 
 def test_with_blocks_keeps_markdown(keep_all):
