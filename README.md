@@ -73,6 +73,17 @@ Requires Python 3.10+. Model files download from the Hugging Face Hub on first u
 cached; prefetch with `htmlsift download mini` (or `base`), or set `HF_HUB_OFFLINE=1` to run
 from cache only.
 
+### Memory (`mini`)
+
+- **Fixed:** ~340 MB once the model is loaded.
+- **Per page:** 99 % of CommonCrawl pages need under 50 MB on top of that.
+- **Long pages:** memory grows with the page, about 21 KB per rendered line plus ~0.2 KB
+  per token. The largest page in an 8,820-page CommonCrawl sample needed ~0.8 GB.
+- **Release:** a page estimated above 100 MB hands its memory back to the system when it
+  finishes, so one large page doesn't leave a long-running worker big.
+- **Small machines:** page size has no built-in limit, so a very large page can exhaust
+  RAM on a 1–2 GB machine. Cap the input size before calling `extract()`.
+
 ## Usage
 
 ```python

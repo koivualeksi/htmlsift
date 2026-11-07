@@ -25,6 +25,11 @@ All notable changes to htmlsift are documented here. The format follows
   `with_blocks=True`.
 
 ### Fixed
+- `mini` memory on very long pages. The embedding step no longer grows with page length
+  (a 3M-token page peaked at 39 GB, now 1.2 GB), and pages estimated above 100 MB hand
+  their memory back to the system when they finish instead of keeping it for the life
+  of the process. Output is unchanged; model time is about 15 % lower on CommonCrawl
+  pages.
 - `mode="base"` without torch or transformers installed raised a bare
   `No module named 'torch'`, and only after downloading the ~1 GB base bundle. It now
   raises `ImportError` before any download, naming the missing packages and
