@@ -80,6 +80,14 @@ is honoured):
 ex.extract(html, output="markdown", base_url="https://example.com/blog/post")
 ```
 
+Leave out the page title that starts the content, as pretraining text pipelines usually do
+(the first line, when it is an `h1`–`h6` or `p` matching the page's `<title>` or
+`og:title`; kept by default):
+
+```python
+ex.extract(html, drop_title=True)
+```
+
 The larger model, from `htmlsift[full]`:
 
 ```python
@@ -114,7 +122,8 @@ htmlsift extract "crawl/*.html" --output markdown > out.jsonl   # one JSON line 
 htmlsift --version                                  # htmlsift, Python and backend versions
 ```
 
-Flags: `--output`, `--mode`, `--device`, `--base-url`, `--encoding`, `--jsonl` (records
+Flags: `--output`, `--mode`, `--device`, `--base-url`, `--encoding`, `--drop-title`,
+`--jsonl` (records
 even for a single file). Failed files become `{"path", "error"}` records and the exit code
 is 1. Output is utf-8.
 
