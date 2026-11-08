@@ -130,3 +130,94 @@ def test_visible(line):
 def test_with_blocks_keeps_markdown(keep_all):
     blocks, _ = keep_all.extract(PLAIN_PAGE, with_blocks=True)
     assert "# Title" in blocks and "Some **bold** text." in blocks
+
+
+def _titled(body, title="Post name | Site"):
+    return (f"<html><head><title>{title}</title></head>"
+            f"<body><header>{body}</header><p>Body text.</p></body></html>")
+
+
+TITLE_DROPPED = {
+    "text": "Body text.",
+    "markdown": "Body text.",
+}
+
+
+@pytest.mark.parametrize("tag", ["h1", "h3", "p"])
+@pytest.mark.parametrize("output", ["text", "markdown"])
+def test_drop_title(keep_all, tag, output):
+    page = _titled(f"<{tag}>Post name</{tag}>")
+    assert keep_all.extract(page, output, drop_title=True) == TITLE_DROPPED[output]
+
+
+@pytest.mark.parametrize("tag", ["h1", "h3", "p"])
+def test_drop_title_html(keep_all, tag):
+    html = keep_all.extract(_titled(f"<{tag}>Post name</{tag}>"), "html", drop_title=True)
+    assert "Post name" not in html.split("</head>")[-1]
+    assert html.count(f"<{tag}>") == (1 if tag == "p" else 0)
+    assert "<p>Body text.</p>" in html
+
+
+@pytest.mark.parametrize("output", ["text", "markdown", "html"])
+def test_title_kept_by_default(keep_all, output):
+    assert "Post name" in keep_all.extract(_titled("<h1>Post name</h1>"), output)
+
+
+@pytest.mark.parametrize("body", [
+    "<h1>Another heading</h1>",             # no match
+    "<div>Post name</div>",                 # not h1-h6 or p
+    "<ul><li>Post name</li></ul>",
+    "<p>Intro.</p><h1>Post name</h1>",      # not the first line
+    "<p>Post name<br>More body.</p>",       # element holds more lines
+])
+@pytest.mark.parametrize("output", ["text", "markdown", "html"])
+def test_drop_title_keeps(keep_all, body, output):
+    page = _titled(body)
+    assert (keep_all.extract(page, output, drop_title=True)
+            == keep_all.extract(page, output))
+
+
+def test_drop_title_skips_invisible_lead(keep_all):
+    page = _titled("<p>​</p><h1>Post name</h1>")
+    assert keep_all.extract(page, drop_title=True) == "Body text."
+
+
+def test_drop_title_skips_marker_only_lead(keep_all):
+    page = _titled("<h2> </h2><pre></pre><h1>Post name</h1>")
+    assert keep_all.extract(page, drop_title=True) == "Body text."
+
+
+def test_drop_title_og_title(keep_all):
+    page = ("<html><head><meta property='og:title' content='Post name'></head>"
+            "<body><h2>Post name</h2><p>Body text.</p></body></html>")
+    assert keep_all.extract(page, drop_title=True) == "Body text."
+
+
+@pytest.mark.parametrize("output", ["text", "markdown", "html"])
+def test_drop_title_only_title(keep_all, output):
+    page = "<html><head><title>Post name</title></head><body><h1>Post name</h1></body></html>"
+    assert keep_all.extract(page, output, drop_title=True) == ""
+
+
+def test_drop_title_kept_ancestor(keep_all):
+    # the div's own text puts the div in the selection; its h1 child must still go
+    page = ("<html><head><title>Post name</title></head><body>"
+            "<div><h1>Post name</h1>Loose body text.</div></body></html>")
+    html = keep_all.extract(page, "html", drop_title=True)
+    assert "<h1>" not in html and "Loose body text." in html
+    assert keep_all.extract(page, "markdown", drop_title=True) == "Loose body text."
+
+
+def test_drop_title_ignored_with_blocks(keep_all):
+    page = _titled("<h1>Post name</h1>")
+    assert (keep_all.extract(page, with_blocks=True, drop_title=True)[0]
+            == keep_all.extract(page, with_blocks=True)[0])
+
+
+def test_drop_title_is_keyword_only():
+    with pytest.raises(TypeError):
+        Extractor().extract("", "text", False, None, None, True)
+
+
+def test_module_extract_passes_drop_title():
+    assert extract("", drop_title=True) == ""
