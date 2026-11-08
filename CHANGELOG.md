@@ -6,6 +6,8 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-08
+
 ### Added
 - `htmlsift --version` prints the htmlsift and Python versions and the installed
   backends: onnxruntime for `mini`, torch and transformers for `base`.
@@ -102,7 +104,8 @@ Documentation and packaging metadata only — no code or model changes since 0.1
   warning on CPU fallback.
 - Model bundles fetched from the Hugging Face Hub, pinned to a fixed commit revision.
 
-[Unreleased]: https://github.com/koivualeksi/htmlsift/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/koivualeksi/htmlsift/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/koivualeksi/htmlsift/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/koivualeksi/htmlsift/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/koivualeksi/htmlsift/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/koivualeksi/htmlsift/releases/tag/v0.1.0
