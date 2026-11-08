@@ -133,6 +133,22 @@ The page's first `<base href>` is resolved against `base_url`, as a browser does
 are. Malformed links are left unchanged. `text` output has no links, so it ignores
 `base_url`.
 
+### Page title
+
+Most pages start their main content with the page title. `drop_title=True` leaves it out,
+as text extractors for pretraining corpora usually do (they keep the title as metadata):
+
+```python
+ex.extract(html, drop_title=True)
+```
+
+The first selected line is dropped when it comes from an `h1`–`h6` or `p` element whose
+whole text is that line, and it matches the page's `<title>` or `og:title` (case and
+punctuation ignored, similarity at least 0.8 against the whole title or a part split at
+` | `, ` - `, ` – `, ` : ` and similar separators). Any other first line is kept. It
+applies to `text`, `html` and `markdown`; `with_blocks=True` is unchanged. The title is
+kept by default.
+
 The larger model, from the `[full]` install:
 
 ```python
@@ -209,6 +225,7 @@ work the same in every shell; directories are not walked.
 | `--mode mini\|base`, `--device` | model and torch device, as for `Extractor` |
 | `--base-url URL` | make links absolute; applies to every input |
 | `--encoding ENC` | charset of the input bytes; applies to every input |
+| `--drop-title` | leave out the leading page title, as `drop_title=True` |
 | `--jsonl` | always print JSON records |
 
 Files are read as bytes, so the charset is detected as described above. Output is utf-8.

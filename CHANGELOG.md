@@ -9,6 +9,10 @@ All notable changes to htmlsift are documented here. The format follows
 ### Added
 - `htmlsift --version` prints the htmlsift and Python versions and the installed
   backends: onnxruntime for `mini`, torch and transformers for `base`.
+- `drop_title=True` in `extract()` and `--drop-title` in the CLI leave out the page title
+  that starts the content: the first selected line, when it comes from an `h1`–`h6` or
+  `p` element holding only that line and matches the page's `<title>` or `og:title`.
+  Applies to `text`, `html` and `markdown`. Off by default.
 
 ### Changed
 - With w3lib 2.6 or newer, the five bytes windows-1252 leaves undefined (`0x81`, `0x8D`,

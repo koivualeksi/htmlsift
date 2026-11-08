@@ -10,6 +10,7 @@ from lxml import html as lxml_html
 
 from ._decode import prepare_input
 from ._links import effective_base, make_absolute
+from ._title import find_title, norm
 from .core.prep_page import prep_page
 from .core.prune import prune
 from .core.render import parse, render_tree
@@ -41,6 +42,20 @@ def _plain_text(root, block_line, n_lines, probs):
     return "\n".join(s for s in (plain[i].rstrip() for i in sel) if _visible(s))
 
 
+def _drop_title(root, blocks, block_src, probs):
+    """(probs, title element): the first selected block with text deselected if it is the
+    page title, else (probs, None) unchanged."""
+    for k in np.flatnonzero(probs > THRESHOLD):
+        if not _visible(blocks[k]) or not norm(blocks[k]):
+            continue
+        title = find_title(root, k, blocks[k], block_src)
+        if title is not None:
+            probs = probs.copy()
+            probs[k] = 0.0
+        return probs, title
+    return probs, None
+
+
 class Extractor:
     """Main-content extractor for one mode. The model loads on the first extract() call
     and is reused, so create one Extractor and call it many times."""
@@ -59,7 +74,8 @@ class Extractor:
                                      threads=self._threads, device=self._device)
         return self._model
 
-    def extract(self, html, output="text", with_blocks=False, *, encoding=None, base_url=None):
+    def extract(self, html, output="text", with_blocks=False, *, encoding=None, base_url=None,
+                drop_title=False):
         """Extract main content from HTML, given as str or bytes.
 
         bytes are decoded by BOM, then encoding= (e.g. an HTTP or WARC charset), then the
@@ -70,12 +86,17 @@ class Extractor:
         selected blocks (structure, links, images kept) and serializes. with_blocks=True
         returns (blocks, probs) -- every block and its probability, unthresholded.
         base_url= makes links absolute in html/markdown output; the page's first
-        <base href> is resolved against it, or used alone if absolute."""
+        <base href> is resolved against it, or used alone if absolute.
+        drop_title=True leaves out the first selected line when it is an h1-h6 or p that
+        matches the page's <title> or og:title, in every output (not with_blocks)."""
         if base_url is not None and not isinstance(base_url, str):
             raise TypeError(f"base_url must be str or None, not {type(base_url).__name__}")
         root, blocks, block_src, block_line, n_lines, probs = self._predict(html, encoding)
         if with_blocks:
             return blocks, probs
+        title = None
+        if drop_title:
+            probs, title = _drop_title(root, blocks, block_src, probs)
         if output == "text":
             return _plain_text(root, block_line, n_lines, probs)
         if output in ("html", "markdown"):
@@ -84,6 +105,8 @@ class Extractor:
                 return ""
             base = effective_base(root, base_url)
             prune(root, selected)
+            if title is not None and title.getparent() is not None:
+                title.drop_tree()   # survives pruning only inside a kept ancestor
             if base:
                 make_absolute(root, base)
             if output == "html":
@@ -121,10 +144,10 @@ _CACHE = {}
 
 
 def extract(html, mode="mini", output="text", with_blocks=False, *, encoding=None,
-            base_url=None):
+            base_url=None, drop_title=False):
     """Module-level convenience: extract with a per-mode cached Extractor."""
     ex = _CACHE.get(mode)
     if ex is None:
         ex = _CACHE[mode] = Extractor(mode)
     return ex.extract(html, output=output, with_blocks=with_blocks, encoding=encoding,
-                      base_url=base_url)
+                      base_url=base_url, drop_title=drop_title)
