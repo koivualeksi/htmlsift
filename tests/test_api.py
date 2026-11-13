@@ -23,6 +23,15 @@ def test_unknown_output_raises():
         Extractor().extract("", output="bogus")
 
 
+@pytest.mark.parametrize("with_blocks", [False, True])
+def test_unknown_output_raises_before_inference(monkeypatch, with_blocks):
+    def no_predict(*a, **k):
+        raise AssertionError("model ran")
+    monkeypatch.setattr(Extractor, "_predict", no_predict)
+    with pytest.raises(ValueError, match="unknown output 'md'"):
+        Extractor().extract("<p>Article.</p>", output="md", with_blocks=with_blocks)
+
+
 def test_module_level_extract_empty():
     assert extract("") == ""
 
