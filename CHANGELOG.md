@@ -6,6 +6,11 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- An unknown `output` (e.g. `output="md"`) raised `ValueError` only after the model had
+  run on the page, and not at all with `with_blocks=True`. It now raises before any
+  inference, in every case.
+
 ## [0.2.1] - 2026-11-08
 
 ### Added
