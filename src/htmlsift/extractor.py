@@ -17,6 +17,7 @@ from .core.render import parse, render_tree
 from .loader import load_model
 
 THRESHOLD = 0.5
+_OUTPUTS = ("text", "html", "markdown")
 _INVISIBLE = frozenset({"Cc", "Cf", "Zs", "Zl", "Zp"})
 _FILLERS = frozenset("ᅟᅠㅤﾠ⠀")
 
@@ -89,6 +90,8 @@ class Extractor:
         <base href> is resolved against it, or used alone if absolute.
         drop_title=True leaves out the first selected line when it is an h1-h6 or p that
         matches the page's <title> or og:title, in every output (not with_blocks)."""
+        if output not in _OUTPUTS:
+            raise ValueError(f"unknown output {output!r}; expected 'text', 'html', or 'markdown'")
         if base_url is not None and not isinstance(base_url, str):
             raise TypeError(f"base_url must be str or None, not {type(base_url).__name__}")
         root, blocks, block_src, block_line, n_lines, probs = self._predict(html, encoding)
@@ -99,21 +102,19 @@ class Extractor:
             probs, title = _drop_title(root, blocks, block_src, probs)
         if output == "text":
             return _plain_text(root, block_line, n_lines, probs)
-        if output in ("html", "markdown"):
-            selected = _selected_srcs(block_src, probs)
-            if not selected:
-                return ""
-            base = effective_base(root, base_url)
-            prune(root, selected)
-            if title is not None and title.getparent() is not None:
-                title.drop_tree()   # survives pruning only inside a kept ancestor
-            if base:
-                make_absolute(root, base)
-            if output == "html":
-                return lxml_html.tostring(root, encoding="unicode")
-            lines, _ = render_tree(root, links=True)
-            return "\n".join(lines).strip("\n")
-        raise ValueError(f"unknown output {output!r}; expected 'text', 'html', or 'markdown'")
+        selected = _selected_srcs(block_src, probs)
+        if not selected:
+            return ""
+        base = effective_base(root, base_url)
+        prune(root, selected)
+        if title is not None and title.getparent() is not None:
+            title.drop_tree()   # survives pruning only inside a kept ancestor
+        if base:
+            make_absolute(root, base)
+        if output == "html":
+            return lxml_html.tostring(root, encoding="unicode")
+        lines, _ = render_tree(root, links=True)
+        return "\n".join(lines).strip("\n")
 
     def _predict(self, html, encoding=None):
         """html -> (root, blocks, block_src, block_line, n_lines, probs). blocks are the
