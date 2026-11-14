@@ -108,8 +108,10 @@ class _Renderer:
         self.links = links
         self.lines = []
         self.line_src = []
+        self.line_pieces = []
         self.buf = []
         self.buf_src = []
+        self.buf_pieces = []
         self.linepfx = ""
         self.pending = None
         self.swallow = False
@@ -129,19 +131,22 @@ class _Renderer:
     def _wrap(self, el, open_s, inner, close_s):
         return open_s + inner + close_s
 
-    def _append(self, line, src):
+    def _append(self, line, src, pieces=()):
         self.swallow = False
         if self.pending is not None:
             self.lines.append(self.pending); self.line_src.append(set())
+            self.line_pieces.append(set())
             self.pending = None
         self.lines.append(line); self.line_src.append(src)
+        self.line_pieces.append(set(pieces))
 
     def flush(self):
         if not self.buf:
             return
         src = {s for s in self.buf_src if s is not None}
-        self._append((self._qpfx() + self.linepfx + "".join(self.buf)).rstrip(), src)
-        self.buf = []; self.buf_src = []; self.linepfx = ""
+        self._append((self._qpfx() + self.linepfx + "".join(self.buf)).rstrip(), src,
+                     self.buf_pieces)
+        self.buf = []; self.buf_src = []; self.buf_pieces = []; self.linepfx = ""
 
     def blank(self):
         self.flush()
@@ -149,12 +154,13 @@ class _Renderer:
             return
         self.pending = self._qpfx().rstrip() if self.quote else ""
 
-    def emit(self, line, src):
+    def emit(self, line, src, pieces=()):
         """Emit a standalone line with an explicit source set."""
         self.flush()
-        self._append(self._qpfx() + line, src if src else set())
+        self._append(self._qpfx() + line, src if src else set(), pieces)
 
-    def text(self, s, src):
+    def text(self, s, src, part):
+        """part: "text" or "tail", which string of src s is."""
         if not s:
             return
         s = COLLAPSE_RE.sub(" ", s)
@@ -166,13 +172,13 @@ class _Renderer:
             s = s.lstrip()
             if not s:
                 return
-        self.buf.append(s); self.buf_src.append(src)
+        self.buf.append(s); self.buf_src.append(src); self.buf_pieces.append((src, part))
 
     def raw(self, s, src):
-        self.buf.append(s); self.buf_src.append(src)
+        self.buf.append(s); self.buf_src.append(src); self.buf_pieces.append((src, "whole"))
 
     def children(self, el):
-        self.text(el.text, el)
+        self.text(el.text, el, "text")
         for child in el:
             self.walk(child)
 
@@ -192,7 +198,7 @@ class _Renderer:
         elif tag == "br":
             self.flush()
         elif tag == "hr":
-            self.blank(); self.emit(self.HR, {el}); self.blank()
+            self.blank(); self.emit(self.HR, {el}, [(el, "whole")]); self.blank()
         elif tag in HEADING_TAGS:
             self.blank()
             self.linepfx = self._heading_pfx(HEADING_TAGS[tag])
@@ -235,7 +241,7 @@ class _Renderer:
             self.children(el)                 # a, span, abbr, sectioning-inline, ...
         # el.tail is stored on el and survives pruning iff el is kept, so it is
         # el's provenance (not the parent's).
-        self.text(el.tail, el)
+        self.text(el.tail, el, "tail")
 
     def list(self, el, kind):
         self.flush()
@@ -244,7 +250,7 @@ class _Renderer:
         except ValueError:
             start = 1
         self.list_stack.append([kind, start])
-        self.text(el.text, el)
+        self.text(el.text, el, "text")
         for child in el:
             ctag = child.tag if isinstance(child.tag, str) else ""
             if ctag.lower() == "li":
@@ -269,8 +275,8 @@ class _Renderer:
     def pre(self, el):
         self.blank()
         self._append(self.FENCE, {el})
-        for line in el.text_content().split("\n"):
-            self._append(line, {el})
+        for j, line in enumerate(el.text_content().split("\n")):
+            self._append(line, {el}, [(el, "pre", j)])
         self._append(self.FENCE, {el})
         self.blank()
 
@@ -303,7 +309,7 @@ class _Renderer:
                 texts.append(self._cell(t)); src |= s
             if not any(texts):                 # skip fully-empty rows
                 continue
-            self.emit("| " + " | ".join(texts) + " |", src)
+            self.emit("| " + " | ".join(texts) + " |", src, [(tr, "whole")])
             if first:
                 self.emit("| " + " | ".join(["---"] * len(cells)) + " |", src)
                 first = False
@@ -330,9 +336,9 @@ class _PlainRenderer(_Renderer):
         # The markdown inner decided that a chunk exists; this one may be "" (<b><hr></b>).
         return _sub_inline(el, self.render_hidden, self.links, _PlainRenderer)
 
-    def text(self, s, src):
+    def text(self, s, src, part):
         lead = self.keep_lead and not self.linepfx and not any(self.buf)
-        super().text(s, src)
+        super().text(s, src, part)
         if lead and self.buf:
             # Heading lead space; the chunk stays in buf so the line is still emitted.
             self.buf[-1] = self.buf[-1].lstrip()
@@ -343,9 +349,14 @@ def _sub_inline(el, render_hidden=False, links=False, cls=_Renderer):
     return " ".join(ln.strip() for ln in sub.lines if ln.strip())
 
 
-def render_tree(root, render_hidden=False, links=False, plain=False):
+def render_tree(root, render_hidden=False, links=False, plain=False, pieces=False):
     """Walk a parsed tree -> (lines, line_src). line_src[i] is the set of source
     DOM elements that produced line i (empty for structural separators).
+
+    pieces=True also returns line_pieces: per line, the exact parts it holds --
+    (el, "text"), (el, "tail"), (el, "whole") for a unit rendered in one go (wrap tag,
+    hr, data-table row) or (el, "pre", j) for content line j of a pre. Fences, table
+    separator rows and blank lines hold none.
 
     render_hidden keeps display:none subtrees instead of skipping them. Default
     off — a reference built by a pruner that also skips display:none stays
@@ -360,6 +371,8 @@ def render_tree(root, render_hidden=False, links=False, plain=False):
     code, quotes, rules, fences) -- output-only, like links."""
     cls = _PlainRenderer if plain else _Renderer
     r = cls(render_hidden, links); r.walk(root); r.flush()
+    if pieces:
+        return r.lines, r.line_src, r.line_pieces
     return r.lines, r.line_src
 
 

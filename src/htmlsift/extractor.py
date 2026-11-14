@@ -27,11 +27,6 @@ def _visible(line):
     return any(c not in _FILLERS and unicodedata.category(c) not in _INVISIBLE for c in line)
 
 
-def _selected_srcs(block_src, probs):
-    """DOM elements behind the blocks scoring over threshold (union, in order)."""
-    return [el for src, p in zip(block_src, probs, strict=True) if p > THRESHOLD for el in src]
-
-
 def _plain_text(root, block_line, n_lines, probs):
     """The selected blocks as plain text, from a marker-free render of the same tree."""
     sel = [i for i, p in zip(block_line, probs, strict=True) if p > THRESHOLD]
@@ -44,17 +39,16 @@ def _plain_text(root, block_line, n_lines, probs):
 
 
 def _drop_title(root, blocks, block_src, probs):
-    """(probs, title element): the first selected block with text deselected if it is the
-    page title, else (probs, None) unchanged."""
+    """probs with the first selected block with text deselected if it is the page
+    title, else probs unchanged."""
     for k in np.flatnonzero(probs > THRESHOLD):
         if not _visible(blocks[k]) or not norm(blocks[k]):
             continue
-        title = find_title(root, k, blocks[k], block_src)
-        if title is not None:
+        if find_title(root, k, blocks[k], block_src) is not None:
             probs = probs.copy()
             probs[k] = 0.0
-        return probs, title
-    return probs, None
+        return probs
+    return probs
 
 
 class Extractor:
@@ -83,8 +77,9 @@ class Extractor:
         page's <meta> declaration, then utf-8 / cp1252. encoding= with str raises TypeError.
         output="text" joins the selected lines as plain text: no heading, emphasis, code,
         quote, rule or fence markers; list bullets, ordered numbers and table pipes
-        stay. output="html" prunes the DOM to the
-        selected blocks (structure, links, images kept) and serializes. with_blocks=True
+        stay. output="html" prunes the DOM to the text of the selected lines (structure,
+        links, images kept; a code block stays whole when any of its lines is selected) and
+        serializes; output="markdown" renders that pruned DOM. with_blocks=True
         returns (blocks, probs) -- every block and its probability, unthresholded.
         base_url= makes links absolute in html/markdown output; the page's first
         <base href> is resolved against it, or used alone if absolute.
@@ -94,21 +89,19 @@ class Extractor:
             raise ValueError(f"unknown output {output!r}; expected 'text', 'html', or 'markdown'")
         if base_url is not None and not isinstance(base_url, str):
             raise TypeError(f"base_url must be str or None, not {type(base_url).__name__}")
-        root, blocks, block_src, block_line, n_lines, probs = self._predict(html, encoding)
+        (root, blocks, block_src, block_pieces, block_line, n_lines,
+         probs) = self._predict(html, encoding)
         if with_blocks:
             return blocks, probs
-        title = None
         if drop_title:
-            probs, title = _drop_title(root, blocks, block_src, probs)
+            probs = _drop_title(root, blocks, block_src, probs)
         if output == "text":
             return _plain_text(root, block_line, n_lines, probs)
-        selected = _selected_srcs(block_src, probs)
+        selected = set(np.flatnonzero(probs > THRESHOLD).tolist())
         if not selected:
             return ""
         base = effective_base(root, base_url)
-        prune(root, selected)
-        if title is not None and title.getparent() is not None:
-            title.drop_tree()   # survives pruning only inside a kept ancestor
+        prune(root, block_pieces, selected)
         if base:
             make_absolute(root, base)
         if output == "html":
@@ -117,28 +110,31 @@ class Extractor:
         return "\n".join(lines).strip("\n")
 
     def _predict(self, html, encoding=None):
-        """html -> (root, blocks, block_src, block_line, n_lines, probs). blocks are the
-        rstripped non-empty render lines; block_src[i] the DOM elements behind block i;
-        block_line[i] its index among the n_lines render lines. Empty page ->
-        (None, [], [], [], 0, empty array)."""
+        """html -> (root, blocks, block_src, block_pieces, block_line, n_lines, probs).
+        blocks are the rstripped non-empty render lines; block_src[i] the DOM elements
+        behind block i; block_pieces[i] the exact parts of them it holds; block_line[i] its
+        index among the n_lines render lines. Empty page ->
+        (None, [], [], [], [], 0, empty array)."""
         empty = np.empty(0, dtype=np.float32)
         html = prepare_input(html, encoding)
         if not html or not html.strip():
-            return None, [], [], [], 0, empty
+            return None, [], [], [], [], 0, empty
         root = parse(html)
-        lines, line_src = render_tree(root)
-        blocks, block_src, block_line = [], [], []
-        for i, (ln, src) in enumerate(zip(lines, line_src, strict=True)):
+        lines, line_src, line_pieces = render_tree(root, pieces=True)
+        blocks, block_src, block_pieces, block_line = [], [], [], []
+        for i, (ln, src, pieces) in enumerate(zip(lines, line_src, line_pieces, strict=True)):
             if ln.strip():
                 blocks.append(ln.rstrip())
                 block_src.append(src)
+                block_pieces.append(pieces)
                 block_line.append(i)
         if not blocks:
-            return root, [], [], [], len(lines), empty
+            return root, [], [], [], [], len(lines), empty
         feats = self.model.features(lines, line_src)          # on RAW lines
         page = prep_page(self.model.tok, blocks, self.model.window,
                          cap=self.model.cap, feats=feats)
-        return root, blocks, block_src, block_line, len(lines), self.model.infer_fn(page)
+        return (root, blocks, block_src, block_pieces, block_line, len(lines),
+                self.model.infer_fn(page))
 
 
 _CACHE = {}
