@@ -1,43 +1,64 @@
-"""Prune a parsed DOM to the elements behind the selected blocks, then serialize.
+"""Prune a parsed DOM to the text of the selected lines.
 
-The renderer records, per rendered line, the DOM elements that produced it (line_src).
-Given the elements behind the KEPT lines, keep exactly those, their ancestors (the
-structural path to root) and their descendants (inline links/images inside a kept block),
-and drop everything else. lxml only -- no html2text.
+render_tree(pieces=True) records, per line, the parts of elements it holds: an element's
+.text or .tail, a unit rendered whole (wrap tag, hr, data-table row) or one content line
+of a pre. prune() keeps exactly the parts of the selected lines. lxml only.
 """
-from lxml import html as lxml_html
+from .render import HEADING_TAGS, SIMPLE_BLOCK_TAGS
+
+# Parents that start their own line: a child dropped there cannot glue its tail to text
+# before the parent.
+_LINE_PARENTS = SIMPLE_BLOCK_TAGS | set(HEADING_TAGS) | {
+    "body", "li", "td", "th", "dd", "dt", "blockquote"}
 
 
-def keep_set(elements):
-    """The nodes to keep: each element, its ancestors, and its descendants. Holding the
-    proxies in the set keeps their lxml identity stable for the prune walk."""
-    keep, expanded = set(), set()
-    for el in elements:
-        if el in expanded:
-            continue
-        sub = {el, *el.iterdescendants()}
-        expanded |= sub
-        keep |= sub
-        keep.update(el.iterancestors())
-    return keep
-
-
-def prune(root, elements):
-    """Remove from root every element not in keep_set(elements); returns root (mutated)."""
-    keep = keep_set(elements)
-
-    def walk(el):
-        for child in list(el):
-            if child in keep:
-                walk(child)
-            else:
-                el.remove(child)
-
-    walk(root)
+def prune(root, block_pieces, selected):
+    """Keep in root only the parts behind the blocks in selected (indices into
+    block_pieces); returns root (mutated). An element holding no part follows its nearest
+    ancestor that does. A pre stays whole when any of its lines is selected."""
+    seen, kept = set(), set()
+    for i, pieces in enumerate(block_pieces):
+        for el, part, *_ in pieces:
+            if part == "pre":
+                part = "whole"
+            seen.add((el, part))
+            if i in selected:
+                kept.add((el, part))
+    _walk(root, False, seen, kept)
     return root
 
 
-def to_html(root, elements):
-    """Prune root to the selected elements and serialize to an HTML string."""
-    prune(root, elements)
-    return lxml_html.tostring(root, encoding="unicode")
+def _walk(el, inherited, seen, kept):
+    """Prune el's subtree -> (el kept, el kept for more than its tail, subtree holds a
+    part). inherited: whether the nearest ancestor holding a part is kept."""
+    whole = (el, "whole") in kept
+    if whole:
+        keep = inh = True
+    elif (el, "text") in seen:
+        keep = inh = (el, "text") in kept
+        if not keep:
+            el.text = None
+    elif (el, "whole") in seen:
+        keep = inh = False
+    elif (el, "tail") in seen:
+        keep, inh = False, (el, "tail") in kept
+    else:
+        keep, inh = False, inherited
+    owns = any((el, part) in seen for part in ("text", "tail", "whole"))
+    kept_child = False
+    if not whole:
+        for child in list(el):
+            child_kept, child_body, child_owns = _walk(child, inh, seen, kept)
+            owns |= child_owns
+            if child_kept:
+                kept_child = True
+                if (not child_body and child.tag != "br" and child.getprevious() is None
+                        and not (el.text or "").strip() and el.tag in _LINE_PARENTS):
+                    child.drop_tree()          # only its tail is kept and nothing precedes it
+            else:
+                el.remove(child)
+    tail_kept = (el, "tail") in kept
+    if (el, "tail") in seen and not tail_kept:
+        el.tail = None
+    body = keep or kept_child or (not owns and inherited)
+    return body or tail_kept, body, owns
