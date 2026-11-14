@@ -6,6 +6,12 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- `output="text"` no longer writes tables as markdown. A table row is now its non-empty
+  cells joined by ` | ` (`Downloads | 1,240`), with no outer pipes, no `| --- |`
+  separator rows and no empty cells. A literal `|` in a cell is kept. `html` and
+  `markdown` output, the model input and the predictions are unchanged.
+
 ### Fixed
 - An unknown `output` (e.g. `output="md"`) raised `ValueError` only after the model had
   run on the page, and not at all with `with_blocks=True`. It now raises before any
