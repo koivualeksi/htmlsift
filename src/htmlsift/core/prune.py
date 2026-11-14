@@ -4,7 +4,7 @@ render_tree(pieces=True) records, per line, the parts of elements it holds: an e
 .text or .tail, a unit rendered whole (wrap tag, hr, data-table row) or one content line
 of a pre. prune() keeps exactly the parts of the selected lines. lxml only.
 """
-from .render import HEADING_TAGS, SIMPLE_BLOCK_TAGS
+from .render import BLOCKISH_TAGS, HEADING_TAGS, SIMPLE_BLOCK_TAGS
 
 # Parents that start their own line: a child dropped there cannot glue its tail to text
 # before the parent.
@@ -15,15 +15,21 @@ _LINE_PARENTS = SIMPLE_BLOCK_TAGS | set(HEADING_TAGS) | {
 def prune(root, block_pieces, selected):
     """Keep in root only the parts behind the blocks in selected (indices into
     block_pieces); returns root (mutated). An element holding no part follows its nearest
-    ancestor that does. A pre stays whole when any of its lines is selected."""
-    seen, kept = set(), set()
+    ancestor that does. A pre with no block elements inside (a code block) stays whole
+    when any of its lines is selected; any other pre is cut to its selected lines."""
+    seen, kept, pre_lines = set(), set(), {}
     for i, pieces in enumerate(block_pieces):
-        for el, part, *_ in pieces:
+        for el, part, *line in pieces:
             if part == "pre":
                 part = "whole"
+                if i in selected:
+                    pre_lines.setdefault(el, set()).add(line[0])
             seen.add((el, part))
             if i in selected:
                 kept.add((el, part))
+    for pre, lines in pre_lines.items():
+        if not _is_code_block(pre):
+            _cut_pre(pre, lines)
     _walk(root, False, seen, kept)
     return root
 
@@ -62,3 +68,42 @@ def _walk(el, inherited, seen, kept):
         el.tail = None
     body = keep or kept_child or (not owns and inherited)
     return body or tail_kept, body, owns
+
+
+def _is_code_block(pre):
+    return not any(isinstance(d.tag, str) and d.tag.lower() in BLOCKISH_TAGS
+                   for d in pre.iterdescendants())
+
+
+def _cut_pre(pre, lines):
+    """Keep only the characters of pre on its content lines in lines; drop elements left
+    empty."""
+    n = 0
+    had_text = set()
+
+    def cut(s):
+        nonlocal n
+        if not s:
+            return s
+        out = []
+        for ch in s:
+            if n in lines:
+                out.append(ch)
+            if ch == "\n":
+                n += 1
+        return "".join(out) or None
+
+    def rec(el):
+        has = bool(el.text)
+        el.text = cut(el.text)
+        for child in el:
+            has |= rec(child) | bool(child.tail)
+            child.tail = cut(child.tail)
+        if has:
+            had_text.add(el)
+        return has
+
+    rec(pre)
+    for d in reversed(list(pre.iterdescendants())):
+        if d in had_text and not d.text and len(d) == 0:
+            d.drop_tree()
