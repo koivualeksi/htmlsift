@@ -10,6 +10,15 @@ All notable changes to htmlsift are documented here. The format follows
 - An unknown `output` (e.g. `output="md"`) raised `ValueError` only after the model had
   run on the page, and not at all with `with_blocks=True`. It now raises before any
   inference, in every case.
+- `output="html"` and `output="markdown"` no longer contain text from lines the model
+  rejected. They kept whole elements, so the text of a parent element, the text right
+  after a kept element and the children of a kept element came back with it. They now
+  keep exactly the text of the selected lines, as `output="text"` does. A code block (a
+  `<pre>` with no block elements inside) stays whole when any of its lines is selected.
+  `text` output, the model input and the predictions are unchanged.
+- `output="html"` and `output="markdown"` no longer glue separate lines together
+  (`Personal incomePopulation`) when the `<br>` or block element between them was not
+  kept; a `<br>` takes its place.
 
 ## [0.2.1] - 2026-11-08
 
