@@ -13,6 +13,11 @@ All notable changes to htmlsift are documented here. The format follows
   `markdown` output, the model input and the predictions are unchanged.
 
 ### Fixed
+- A document that parses to no element (only comments, a doctype, an `<?xml?>`
+  declaration or other processing instructions; with libxml2 2.11, as in lxml's Windows
+  wheels, also a lone BOM or leading NUL bytes) raised
+  `lxml.etree.ParserError: Document is empty`. It now returns `""` in every output, and
+  `([], [])` with `with_blocks=True`, as an empty string does.
 - An unknown `output` (e.g. `output="md"`) raised `ValueError` only after the model had
   run on the page, and not at all with `with_blocks=True`. It now raises before any
   inference, in every case.
