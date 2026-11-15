@@ -74,6 +74,32 @@ def test_empty_bytes(html):
     assert extract(html) == ""
 
 
+_NO_ELEMENTS = ["<!-- comment -->", "<!-- a --><!-- b -->", "<!DOCTYPE html>",
+                '<?xml version="1.0"?>', "<?php echo 1; ?>", "\x00", "\x00\x00<p>x</p>",
+                "﻿", "﻿<!-- comment -->", b"\x00", b"<!-- comment -->",
+                b"\xef\xbb\xbf<!DOCTYPE html>"]
+
+
+@pytest.fixture
+def no_model(monkeypatch):
+    def no_load(*a, **k):
+        raise AssertionError("model loaded")
+    monkeypatch.setattr("htmlsift.extractor.load_model", no_load)
+
+
+@pytest.mark.parametrize("html", _NO_ELEMENTS)
+@pytest.mark.parametrize("out", ["text", "html", "markdown"])
+def test_no_elements_returns_empty(no_model, html, out):
+    assert Extractor().extract(html, output=out) == ""
+    assert Extractor().extract(html, output=out, drop_title=True) == ""
+
+
+@pytest.mark.parametrize("html", _NO_ELEMENTS)
+def test_no_elements_with_blocks(no_model, html):
+    blocks, probs = Extractor().extract(html, with_blocks=True)
+    assert blocks == [] and len(probs) == 0
+
+
 def test_encoding_is_keyword_only():
     with pytest.raises(TypeError):
         Extractor().extract(b"", "text", False, "utf-8")
