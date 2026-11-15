@@ -25,7 +25,15 @@ CASES = [
     ("<pre>def f():\n    return 1</pre>", ["def f():", "    return 1"]),
     ("<p>above</p><hr><p>below</p>", ["above", "below"]),
     ("<table><tr><th>k</th><th>v</th></tr><tr><td>a|b</td><td>1</td></tr></table>",
-     ["| k | v |", "| --- | --- |", "| a|b | 1 |"]),
+     ["k | v", "a|b | 1"]),
+    ("<table><tr><td>a\\|b</td><td>1</td></tr></table>", ["a\\|b | 1"]),
+    ("<table><tr><th>M</th><th>T</th><th>W</th></tr>"
+     "<tr><td></td><td>1</td><td>2</td></tr><tr><td>3</td><td> </td><td>4</td></tr></table>",
+     ["M | T | W", "1 | 2", "3 | 4"]),
+    ("<table><tr><td></td><td>only</td></tr><tr><td></td><td></td></tr></table>", ["only"]),
+    ("<blockquote><table><tr><td>a</td><td>b</td></tr></table></blockquote>", ["a | b"]),
+    ("<table><tr><td><div>left</div></td><td><p>right</p></td></tr></table>",
+     ["left", "right"]),
     ("<ul><li>one</li><li>two</li></ul>", ["- one", "- two"]),
     ('<ol start="3"><li>three</li><li>four</li></ol>', ["3. three", "4. four"]),
     ("<ul><li>outer<ul><li>inner</li></ul></li></ul>", ["- outer", "  - inner"]),
@@ -65,6 +73,20 @@ def test_plain_same_line_count_on_pages(page):
 def test_plain_false_is_default():
     root = parse((DATA / "sample.html").read_text(encoding="utf-8"))
     assert render_tree(root, plain=False) == render_tree(root)
+
+
+def test_table_separator_is_empty_line():
+    root = parse("<html><body><table><tr><th>k</th><th>v</th></tr>"
+                 "<tr><td>a</td><td>1</td></tr></table></body></html>")
+    md, plain = render_tree(root)[0], render_tree(root, plain=True)[0]
+    i = md.index("| --- | --- |")
+    assert plain[i - 1:i + 2] == ["k | v", "", "a | 1"]
+
+
+def test_markdown_render_keeps_table_syntax():
+    lines, _ = render_tree(parse("<html><body><table><tr><td></td><td>1</td></tr>"
+                                 "<tr><td>a|b</td><td>2</td></tr></table></body></html>"))
+    assert [ln for ln in lines if ln] == ["|  | 1 |", "| --- | --- |", "| a\\|b | 2 |"]
 
 
 def test_markdown_render_keeps_markers():

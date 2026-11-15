@@ -128,6 +128,12 @@ class _Renderer:
     def _cell(self, txt):
         return txt
 
+    def _row(self, texts):
+        return "| " + " | ".join(texts) + " |"
+
+    def _sep(self, n):
+        return "| " + " | ".join(["---"] * n) + " |"
+
     def _wrap(self, el, open_s, inner, close_s):
         return open_s + inner + close_s
 
@@ -309,16 +315,17 @@ class _Renderer:
                 texts.append(self._cell(t)); src |= s
             if not any(texts):                 # skip fully-empty rows
                 continue
-            self.emit("| " + " | ".join(texts) + " |", src, [(tr, "whole")])
+            self.emit(self._row(texts), src, [(tr, "whole")])
             if first:
-                self.emit("| " + " | ".join(["---"] * len(cells)) + " |", src)
+                self.emit(self._sep(len(cells)), src)
                 first = False
         self.blank()
 
 
 class _PlainRenderer(_Renderer):
     """The same walk and the same lines as _Renderer, without markdown markers.
-    Output only; list bullets, ordered numbers and table pipes stay."""
+    Output only; list bullets and ordered numbers stay. A data-table row joins its
+    non-empty cells with " | ", and the separator row is an empty line."""
 
     HR = ""
     FENCE = ""
@@ -331,6 +338,12 @@ class _PlainRenderer(_Renderer):
 
     def _cell(self, txt):
         return txt.replace("\\|", "|")
+
+    def _row(self, texts):
+        return " | ".join(t for t in texts if t)
+
+    def _sep(self, n):
+        return ""
 
     def _wrap(self, el, open_s, inner, close_s):
         # The markdown inner decided that a chunk exists; this one may be "" (<b><hr></b>).
@@ -368,7 +381,8 @@ def render_tree(root, render_hidden=False, links=False, plain=False, pieces=Fals
     training still matches; only serialization sets links=True.
 
     plain=True renders the same lines without markdown markers (headings, emphasis,
-    code, quotes, rules, fences) -- output-only, like links."""
+    code, quotes, rules, fences, table pipes and separator rows) -- output-only, like
+    links."""
     cls = _PlainRenderer if plain else _Renderer
     r = cls(render_hidden, links); r.walk(root); r.flush()
     if pieces:

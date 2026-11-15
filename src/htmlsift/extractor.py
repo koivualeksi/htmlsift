@@ -76,8 +76,9 @@ class Extractor:
         bytes are decoded by BOM, then encoding= (e.g. an HTTP or WARC charset), then the
         page's <meta> declaration, then utf-8 / cp1252. encoding= with str raises TypeError.
         output="text" joins the selected lines as plain text: no heading, emphasis, code,
-        quote, rule or fence markers; list bullets, ordered numbers and table pipes
-        stay. output="html" prunes the DOM to the text of the selected lines (structure,
+        quote, rule or fence markers; list bullets and ordered numbers stay, and a table
+        row is its non-empty cells joined by " | ".
+        output="html" prunes the DOM to the text of the selected lines (structure,
         links, images kept; a code block stays whole when any of its lines is selected) and
         serializes; output="markdown" renders that pruned DOM. with_blocks=True
         returns (blocks, probs) -- every block and its probability, unthresholded.
