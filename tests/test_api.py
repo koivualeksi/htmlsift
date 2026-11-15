@@ -75,9 +75,10 @@ def test_empty_bytes(html):
 
 
 _NO_ELEMENTS = ["<!-- comment -->", "<!-- a --><!-- b -->", "<!DOCTYPE html>",
-                '<?xml version="1.0"?>', "<?php echo 1; ?>", "\x00", "\x00\x00<p>x</p>",
-                "﻿", "﻿<!-- comment -->", b"\x00", b"<!-- comment -->",
-                b"\xef\xbb\xbf<!DOCTYPE html>"]
+                '<?xml version="1.0"?>', "<?php echo 1; ?>", "\ufeff<!-- comment -->",
+                b"<!-- comment -->", b"\xef\xbb\xbf<!DOCTYPE html>"]
+# No element with libxml2 2.11; 2.14 parses NUL to U+FFFD and keeps a lone BOM as text.
+_PARSER_DEPENDENT = ["\x00", "\x00\x00<p>x</p>", "\ufeff", b"\x00"]
 
 
 @pytest.fixture
@@ -98,6 +99,14 @@ def test_no_elements_returns_empty(no_model, html, out):
 def test_no_elements_with_blocks(no_model, html):
     blocks, probs = Extractor().extract(html, with_blocks=True)
     assert blocks == [] and len(probs) == 0
+
+
+@pytest.mark.parametrize("html", _PARSER_DEPENDENT)
+@pytest.mark.parametrize("out", ["text", "html", "markdown"])
+def test_parser_dependent_never_raises(keep_all, html, out):
+    assert isinstance(keep_all.extract(html, output=out), str)
+    blocks, probs = keep_all.extract(html, with_blocks=True)
+    assert len(blocks) == len(probs)
 
 
 def test_encoding_is_keyword_only():
