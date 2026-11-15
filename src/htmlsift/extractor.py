@@ -1,7 +1,7 @@
 """The public extractor: HTML in, main content out. Holds a lazily-loaded Model and
 runs one pipeline per call -- parse, render to lines, score each line, keep the lines
 over threshold, serialize. Mirrors the research inference front-end (render_blocks +
-prep_page + threshold); no sanitize step.
+prep_page + threshold); no sanitize step before rendering.
 """
 import unicodedata
 
@@ -11,6 +11,7 @@ from lxml import html as lxml_html
 
 from ._decode import prepare_input
 from ._links import effective_base, make_absolute
+from ._sanitize import sanitize
 from ._title import find_title, norm
 from .core.prep_page import prep_page
 from .core.prune import prune
@@ -81,7 +82,9 @@ class Extractor:
         row is its non-empty cells joined by " | ".
         output="html" prunes the DOM to the text of the selected lines (structure,
         links, images kept; a code block stays whole when any of its lines is selected) and
-        serializes; output="markdown" renders that pruned DOM. with_blocks=True
+        serializes; output="markdown" renders that pruned DOM. Both drop scripts, styles,
+        event handlers, srcdoc and links other than http(s), mailto, tel, ftp, relative
+        and data:image in <img>. with_blocks=True
         returns (blocks, probs) -- every block and its probability, unthresholded.
         base_url= makes links absolute in html/markdown output; the page's first
         <base href> is resolved against it, or used alone if absolute.
@@ -106,6 +109,7 @@ class Extractor:
         prune(root, block_pieces, selected)
         if base:
             make_absolute(root, base)
+        sanitize(root)
         if output == "html":
             return lxml_html.tostring(root, encoding="unicode")
         lines, _ = render_tree(root, links=True)
