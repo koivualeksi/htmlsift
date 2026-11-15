@@ -6,6 +6,7 @@ prep_page + threshold); no sanitize step.
 import unicodedata
 
 import numpy as np
+from lxml import etree
 from lxml import html as lxml_html
 
 from ._decode import prepare_input
@@ -114,13 +115,16 @@ class Extractor:
         """html -> (root, blocks, block_src, block_pieces, block_line, n_lines, probs).
         blocks are the rstripped non-empty render lines; block_src[i] the DOM elements
         behind block i; block_pieces[i] the exact parts of them it holds; block_line[i] its
-        index among the n_lines render lines. Empty page ->
-        (None, [], [], [], [], 0, empty array)."""
+        index among the n_lines render lines. Empty page, or one that parses to no element
+        -> (None, [], [], [], [], 0, empty array)."""
         empty = np.empty(0, dtype=np.float32)
         html = prepare_input(html, encoding)
         if not html or not html.strip():
             return None, [], [], [], [], 0, empty
-        root = parse(html)
+        try:
+            root = parse(html)
+        except etree.ParserError:   # no elements: only comments, doctype, PIs, NULs
+            return None, [], [], [], [], 0, empty
         lines, line_src, line_pieces = render_tree(root, pieces=True)
         blocks, block_src, block_pieces, block_line = [], [], [], []
         for i, (ln, src, pieces) in enumerate(zip(lines, line_src, line_pieces, strict=True)):
