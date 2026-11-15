@@ -14,7 +14,8 @@ All notable changes to htmlsift are documented here. The format follows
 
 ### Fixed
 - A document that parses to no element (only comments, a doctype, an `<?xml?>`
-  declaration or other processing instructions, a BOM, NUL bytes) raised
+  declaration or other processing instructions; with libxml2 2.11, as in lxml's Windows
+  wheels, also a lone BOM or leading NUL bytes) raised
   `lxml.etree.ParserError: Document is empty`. It now returns `""` in every output, and
   `([], [])` with `with_blocks=True`, as an empty string does.
 - An unknown `output` (e.g. `output="md"`) raised `ValueError` only after the model had
