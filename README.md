@@ -192,6 +192,14 @@ Composite image showing the global distribution of photosynthesis, including bot
 | `html` | selected DOM, with structure / links / images kept |
 | `markdown` | clean markdown, links and images preserved |
 
+`html` and `markdown` output are cleaned of active content: the elements the model never
+reads (`script`, `style`, `title`, `meta`, `link`, `base`) and SVG `<animate>` / `<set>`
+are dropped; `on*` event handlers and `srcdoc` are removed; a link or source whose scheme
+is not `http`, `https`, `mailto`, `tel` or `ftp` loses its target (`javascript:`,
+`data:` and app links such as `sms:`), its text stays. Relative links and `data:image/`
+in `<img src>` are kept. This is a basic cleanup, not a guarantee: run a full sanitizer
+such as [nh3](https://github.com/messense/nh3) before inserting the output into a web page.
+
 The lines exactly as the model scored them, markdown markers included, come from
 `with_blocks=True`:
 
