@@ -30,6 +30,9 @@ All notable changes to htmlsift are documented here. The format follows
 - `output="html"` and `output="markdown"` no longer glue separate lines together
   (`Personal incomePopulation`) when the `<br>` or block element between them was not
   kept; a `<br>` takes its place.
+- With `base_url=` (or an absolute `<base href>`), a relative SVG `xlink:href` stayed
+  relative in `output="html"` on lxml < 6.1. It is now made absolute on every lxml
+  version, as on 6.1+.
 
 ### Security
 - `output="html"` and `output="markdown"` are now cleaned of active content. Kept
@@ -38,8 +41,10 @@ All notable changes to htmlsift are documented here. The format follows
   model never reads (`script`, `style`, `title`, `meta`, `link`, `base`) and SVG
   `<animate>` / `<set>` are dropped, `on*` and `srcdoc` attributes are removed, and a link
   or source whose scheme is not `http`, `https`, `mailto`, `tel`, `ftp` or relative loses
-  its target (its text stays); `data:image/` in `<img src>` is kept. A basic cleanup, not
-  a guarantee. `text` output, the model input and the predictions are unchanged.
+  its target (its text stays); `data:image/` in `<img src>` is kept. SVG `xlink:href` is
+  checked the same way on every lxml version (lxml < 6.1 does not list it as a link
+  attribute). A basic cleanup, not a guarantee. `text` output, the model input and the
+  predictions are unchanged.
 
 ## [0.2.1] - 2026-11-08
 
