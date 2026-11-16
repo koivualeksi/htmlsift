@@ -1,6 +1,8 @@
 """Make a page's links absolute: resolve the base URL, then rewrite against it."""
 from urllib.parse import urljoin, urlsplit
 
+from lxml.html import defs
+
 
 def _is_absolute_http(url):
     try:
@@ -50,3 +52,8 @@ def make_absolute(root, base):
             return link
 
     root.rewrite_links(absolute, resolve_base_href=False)
+    if "xlink:href" not in defs.link_attrs:
+        for el in root.iter("*"):
+            link = el.get("xlink:href")
+            if link is not None:
+                el.set("xlink:href", absolute(link))

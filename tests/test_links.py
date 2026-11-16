@@ -111,6 +111,12 @@ def test_make_absolute_special_links(href, expected):
     assert _hrefs(root)["a"] == expected
 
 
+def test_make_absolute_rewrites_xlink_href():
+    root = parse('<svg><a xlink:href="report"><text>r</text></a></svg>')
+    make_absolute(root, PAGE)
+    assert root.find(".//a").get("xlink:href") == "https://example.com/blog/report"
+
+
 def test_make_absolute_leaves_srcset():
     root = parse('<p><img src="a.png" srcset="a-2x.png 2x"></p>')
     make_absolute(root, PAGE)

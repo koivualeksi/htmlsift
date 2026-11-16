@@ -10,7 +10,7 @@ from lxml.html.defs import link_attrs
 from .core.render import SKIP_TAGS
 
 _DROP_TAGS = SKIP_TAGS | {"animate", "set"}
-_URL_ATTRS = link_attrs | {"poster"}
+_URL_ATTRS = link_attrs | {"poster", "xlink:href"}
 _SCHEMES = frozenset({"http", "https", "mailto", "tel", "ftp"})
 _SCHEME = re.compile(r"([a-z][a-z0-9+.\-]*):", re.I)
 _EDGE = "".join(map(chr, range(0x21)))
