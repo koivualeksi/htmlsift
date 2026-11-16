@@ -125,7 +125,8 @@ def _extract(ap, args):
                     try:
                         content = ex.extract(_read(path), output=args.output,
                                              encoding=args.encoding, base_url=args.base_url,
-                                             drop_title=args.drop_title)
+                                             drop_title=args.drop_title,
+                                             dedup=args.dedup)
                     except Exception as e:
                         error = str(e) or type(e).__name__
                 failed = failed or error is not None
@@ -159,6 +160,8 @@ def main(argv=None):
     ex.add_argument("--drop-title", action="store_true",
                     help="leave out a leading line that matches the page's <title> or "
                          "og:title")
+    ex.add_argument("--dedup", action="store_true",
+                    help="leave out repeats of a kept line of 100 or more characters")
     ex.add_argument("--jsonl", action="store_true",
                     help="always print JSON records, even for a single input")
 
