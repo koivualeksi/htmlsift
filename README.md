@@ -149,6 +149,25 @@ punctuation ignored, similarity at least 0.8 against the whole title or a part s
 applies to `text`, `html` and `markdown`; `with_blocks=True` is unchanged. The title is
 kept by default.
 
+### Repeated lines
+
+Some pages hold the same text twice: a standfirst repeated as the first paragraph, mobile
+and desktop copies of a block, a template that renders the article twice. The model
+keeps such repeats, and the repetition filters of pretraining pipelines then reject the
+whole page. `dedup=True` keeps only the first copy:
+
+```python
+ex.extract(html, dedup=True)
+```
+
+Each selected line of 100 or more characters that repeats an earlier selected line is
+dropped. Lines are compared as letters and digits only: case, punctuation and heading
+or list markers are ignored. Shorter lines
+(headings, captions, "Read more") are always kept, and so are the lines of a `<pre>`,
+where repeats are usually real. A line counts as a first copy only if it is selected. It
+applies to `text`, `html` and `markdown`; `with_blocks=True` is unchanged. It is off by
+default.
+
 The larger model, from the `[full]` install:
 
 ```python
@@ -234,6 +253,7 @@ work the same in every shell; directories are not walked.
 | `--base-url URL` | make links absolute; applies to every input |
 | `--encoding ENC` | charset of the input bytes; applies to every input |
 | `--drop-title` | leave out the leading page title, as `drop_title=True` |
+| `--dedup` | leave out repeated lines, as `dedup=True` |
 | `--jsonl` | always print JSON records |
 
 Files are read as bytes, so the charset is detected as described above. Output is utf-8.
