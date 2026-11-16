@@ -24,9 +24,10 @@ class FakeExtractor:
     def model(self):
         return object()
 
-    def extract(self, html, output="text", *, encoding=None, base_url=None, drop_title=False):
+    def extract(self, html, output="text", *, encoding=None, base_url=None, drop_title=False,
+                dedup=False):
         self.calls.append({"output": output, "encoding": encoding, "base_url": base_url,
-                           "drop_title": drop_title})
+                           "drop_title": drop_title, "dedup": dedup})
         text = html.decode(encoding or "utf-8")
         if "FAIL" in text:
             raise ValueError("bad page")
@@ -191,18 +192,20 @@ def test_options_reach_extractor(run, tmp_path):
     (tmp_path / "a.html").write_bytes("caf\xe9".encode("cp1252"))
     code, out, _ = run("a.html", "--output", "markdown", "--encoding", "cp1252",
                        "--base-url", "https://example.com/", "--mode", "base",
-                       "--device", "cpu", "--drop-title")
+                       "--device", "cpu", "--drop-title", "--dedup")
     ex = FakeExtractor.last
     assert (code, out) == (0, "café\n".encode())
     assert (ex.mode, ex.device) == ("base", "cpu")
     assert ex.calls == [{"output": "markdown", "encoding": "cp1252",
-                         "base_url": "https://example.com/", "drop_title": True}]
+                         "base_url": "https://example.com/", "drop_title": True,
+                         "dedup": True}]
 
 
 def test_title_kept_by_default(run, tmp_path):
     _files(tmp_path, **{"a.html": "x"})
     run("a.html")
     assert FakeExtractor.last.calls[0]["drop_title"] is False
+    assert FakeExtractor.last.calls[0]["dedup"] is False
 
 
 def test_utf8_output_not_escaped(run, tmp_path):

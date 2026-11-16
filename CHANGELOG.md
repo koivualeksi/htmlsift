@@ -6,6 +6,13 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `dedup=True` (CLI `--dedup`): leaves out each selected line of 100 or more characters
+  that repeats an earlier selected line, keeping the first copy, in `text`, `html` and
+  `markdown`. Lines are compared ignoring case, punctuation and markers. Lines in a
+  `<pre>` are never deduped. Off by default; `with_blocks=True`, the model input and the
+  predictions are unchanged.
+
 ### Changed
 - `output="text"` no longer writes tables as markdown. A table row is now its non-empty
   cells joined by ` | ` (`Downloads | 1,240`), with no outer pipes, no `| --- |`

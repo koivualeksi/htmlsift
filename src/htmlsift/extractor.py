@@ -19,6 +19,7 @@ from .core.render import parse, render_tree
 from .loader import load_model
 
 THRESHOLD = 0.5
+DEDUP_CHARS = 100
 _OUTPUTS = ("text", "html", "markdown")
 _INVISIBLE = frozenset({"Cc", "Cf", "Zs", "Zl", "Zp"})
 _FILLERS = frozenset("ᅟᅠㅤﾠ⠀")
@@ -53,6 +54,20 @@ def _drop_title(root, blocks, block_src, probs):
     return probs
 
 
+def _dedup(blocks, block_pieces, probs):
+    """probs with each selected line that repeats an earlier selected one (compared after
+    norm(), DEDUP_CHARS or more) deselected; lines in a pre are left alone."""
+    probs, seen = probs.copy(), set()
+    for k in np.flatnonzero(probs > THRESHOLD):
+        key = norm(blocks[k])
+        if len(key) < DEDUP_CHARS or any(p[1] == "pre" for p in block_pieces[k]):
+            continue
+        if key in seen:
+            probs[k] = 0.0
+        seen.add(key)
+    return probs
+
+
 class Extractor:
     """Main-content extractor for one mode. The model loads on the first extract() call
     and is reused, so create one Extractor and call it many times."""
@@ -72,7 +87,7 @@ class Extractor:
         return self._model
 
     def extract(self, html, output="text", with_blocks=False, *, encoding=None, base_url=None,
-                drop_title=False):
+                drop_title=False, dedup=False):
         """Extract main content from HTML, given as str or bytes.
 
         bytes are decoded by BOM, then encoding= (e.g. an HTTP or WARC charset), then the
@@ -89,7 +104,10 @@ class Extractor:
         base_url= makes links absolute in html/markdown output; the page's first
         <base href> is resolved against it, or used alone if absolute.
         drop_title=True leaves out the first selected line when it is an h1-h6 or p that
-        matches the page's <title> or og:title, in every output (not with_blocks)."""
+        matches the page's <title> or og:title, in every output (not with_blocks).
+        dedup=True leaves out each selected line of 100 or more characters that repeats an
+        earlier selected line (case, punctuation and markers ignored), keeping the first
+        copy, in every output (not with_blocks). Lines in a <pre> are never deduped."""
         if output not in _OUTPUTS:
             raise ValueError(f"unknown output {output!r}; expected 'text', 'html', or 'markdown'")
         if base_url is not None and not isinstance(base_url, str):
@@ -100,6 +118,8 @@ class Extractor:
             return blocks, probs
         if drop_title:
             probs = _drop_title(root, blocks, block_src, probs)
+        if dedup:
+            probs = _dedup(blocks, block_pieces, probs)
         if output == "text":
             return _plain_text(root, block_line, n_lines, probs)
         selected = set(np.flatnonzero(probs > THRESHOLD).tolist())
@@ -150,10 +170,10 @@ _CACHE = {}
 
 
 def extract(html, mode="mini", output="text", with_blocks=False, *, encoding=None,
-            base_url=None, drop_title=False):
+            base_url=None, drop_title=False, dedup=False):
     """Module-level convenience: extract with a per-mode cached Extractor."""
     ex = _CACHE.get(mode)
     if ex is None:
         ex = _CACHE[mode] = Extractor(mode)
     return ex.extract(html, output=output, with_blocks=with_blocks, encoding=encoding,
-                      base_url=base_url, drop_title=drop_title)
+                      base_url=base_url, drop_title=drop_title, dedup=dedup)
