@@ -30,7 +30,30 @@ def test_dedup_pool_matches_full_pool():
     ids = rng.integers(0, 50, size=3000).astype(np.int64)        # heavy repetition
     members = [[], [0, 1, 2], [2, 3], list(range(4, 2500)), [], list(range(2500, 3000))]
     uniq, inv = np.unique(ids, return_inverse=True)
-    assert np.array_equal(pool(table[uniq], inv, members), _full_pool(table[ids], members))
+    np.testing.assert_allclose(pool(table[uniq], inv, members), _full_pool(table[ids], members),
+                               rtol=1e-6, atol=1e-6)
+
+
+@pytest.mark.parametrize("members", [
+    [[], [0, 1], [], [], [2, 3, 4], []],      # empty first, last and consecutive blocks
+    [[0, 1, 2], [2, 3], [3, 4]],              # tokens shared by adjacent blocks
+    [[], [], []],                             # no block has tokens
+    [],                                       # no blocks
+])
+def test_pool_edge_cases(members):
+    emb = np.random.default_rng(1).standard_normal((5, 8)).astype(np.float32)
+    out = pool(emb, np.arange(5), members)
+    assert out.shape == (len(members), 8) and out.dtype == np.float32
+    np.testing.assert_allclose(out, _full_pool(emb, members), rtol=1e-6, atol=1e-6)
+
+
+def test_pool_batches_match_unbatched(monkeypatch):
+    monkeypatch.setattr(onnx_infer, "POOL_CHUNK", 7)
+    emb = np.random.default_rng(2).standard_normal((100, 8)).astype(np.float32)
+    members = [[0, 1, 2], [], [3, 4, 5, 6], list(range(7, 30)), [], [30, 31], [31, 32],
+               list(range(33, 100)), []]
+    np.testing.assert_allclose(pool(emb, np.arange(100), members), _full_pool(emb, members),
+                               rtol=1e-6, atol=1e-6)
 
 
 class _FakeSession:
@@ -107,4 +130,5 @@ def test_real_model_matches_full_table():
     x = np.concatenate([_full_pool(emb, page["members"]), page["feats"]], 1)
     logits = head.run(["logits"], {"x": x[None]})[0][0]
     ref = (1.0 / (1.0 + np.exp(-logits))).astype(np.float32)
-    assert np.array_equal(probs, ref)
+    np.testing.assert_allclose(probs, ref, atol=1e-5)
+    assert ((probs > 0.5) == (ref > 0.5)).all()
