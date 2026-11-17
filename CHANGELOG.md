@@ -18,6 +18,10 @@ All notable changes to htmlsift are documented here. The format follows
   cells joined by ` | ` (`Downloads | 1,240`), with no outer pipes, no `| --- |`
   separator rows and no empty cells. A literal `|` in a cell is kept. `html` and
   `markdown` output, the model input and the predictions are unchanged.
+- The mini model now mean-pools each block's token embeddings with one vectorized
+  segment sum, in batches of 32,768 tokens, instead of a Python loop over blocks.
+  Probabilities can differ from before by about 1e-6; on 2,040 test pages no block
+  changed side of the 0.5 threshold.
 
 ### Fixed
 - A document that parses to no element (only comments, a doctype, an `<?xml?>`
