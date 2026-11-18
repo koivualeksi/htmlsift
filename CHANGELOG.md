@@ -18,6 +18,16 @@ All notable changes to htmlsift are documented here. The format follows
   cells joined by ` | ` (`Downloads | 1,240`), with no outer pipes, no `| --- |`
   separator rows and no empty cells. A literal `|` in a cell is kept. `html` and
   `markdown` output, the model input and the predictions are unchanged.
+- Dependencies now have tested bounds: `lxml>=6.0.4,<7`, `tokenizers>=0.21,<0.24`,
+  `onnxruntime>=1.20.1`, `numpy>=1.26.4`, `huggingface-hub>=0.26.5`, `w3lib>=2.3.1,<3`
+  (was `>=2.5,<3`), and for `[full]` `torch>=2.7.1`, `transformers>=5.1,<6`. Tested on
+  Linux: across these ranges the mini model gives the same `text`, `html` and `markdown`
+  on 2,040 test pages (onnxruntime before 1.30 shifts probabilities by at most 2.4e-6).
+  The base model gives the same line selection on a 13-page sample, except that torch
+  2.7-2.12 shifts probabilities by up to 0.014 and can flip a line that sits right at the
+  0.5 threshold. lxml 5.x is excluded: its older libxml2 renders some pages differently from
+  the libxml2 2.14 the models were trained on. CI now also runs the suite with the lowest
+  allowed versions.
 
 ### Fixed
 - A document that parses to no element (only comments, a doctype, an `<?xml?>`

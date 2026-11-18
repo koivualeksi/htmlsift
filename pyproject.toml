@@ -23,16 +23,16 @@ classifiers = [
     "Topic :: Text Processing :: Markup :: HTML",
 ]
 dependencies = [
-    "onnxruntime",
-    "tokenizers",
-    "lxml",
-    "numpy",
-    "huggingface-hub",
-    "w3lib>=2.5,<3",
+    "onnxruntime>=1.20.1",
+    "tokenizers>=0.21,<0.24",
+    "lxml>=6.0.4,<7",
+    "numpy>=1.26.4",
+    "huggingface-hub>=0.26.5",
+    "w3lib>=2.3.1,<3",
 ]
 
 [project.optional-dependencies]
-full = ["torch", "transformers"] # unlocks the base 311m model
+full = ["torch>=2.7.1", "transformers>=5.1,<6"] # unlocks the base 311m model
 
 [project.urls]
 Repository = "https://github.com/koivualeksi/htmlsift"
