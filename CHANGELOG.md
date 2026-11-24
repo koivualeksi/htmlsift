@@ -57,6 +57,13 @@ All notable changes to htmlsift are documented here. The format follows
 - With `base_url=` (or an absolute `<base href>`), a relative SVG `xlink:href` stayed
   relative in `output="html"` on lxml < 6.1. It is now made absolute on every lxml
   version, as on 6.1+.
+- With libxml2 2.14 (lxml's Linux wheels), `output="html"` and `output="markdown"`
+  raised `ValueError: All strings must be XML compatible` on pages with C0 control
+  characters (such as `\x03` or `&#3;`) in text or attributes. The parser now removes
+  them, as libxml2 2.11 (lxml's Windows wheels) already did. Pages without them, and every
+  page on Windows, give the same output as before; on Linux, the `text` output and the
+  model input of affected pages lose the characters too. None of the 7,825 WebMainBench
+  training and test pages contain them.
 
 ### Security
 - `output="html"` and `output="markdown"` are now cleaned of active content. Kept
