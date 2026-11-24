@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from huggingface_hub import hf_hub_download
+from huggingface_hub.utils import EntryNotFoundError
 
 REPO = "koivualeksi/htmlsift-release"
 REVISION = "73ac2b978aef356e9e5772640a0c9444f2b67705"   # release commit with both mini/
@@ -21,6 +22,7 @@ REVISION = "73ac2b978aef356e9e5772640a0c9444f2b67705"   # release commit with bo
 TABLE = "mini-table-int8.onnx"
 HEAD = "mini-head-fABC.onnx"
 TOKENIZER = "tokenizer.json"
+TOKENIZER_GZ = "tokenizer.json.gz"   # preferred; bundles without it fall back to TOKENIZER
 MANIFEST = "manifest.json"
 
 # Each mode's bundle as {logical name -> filename}. Remote layout is <mode>/<filename>.
@@ -56,9 +58,23 @@ def resolve_bundle(mode, local_dir=None):
     """{logical name -> local file path} for `mode`'s bundle. A local_dir reads the
     files straight off disk (development); otherwise each is pulled from the release
     repo at the pinned revision and cached by huggingface_hub."""
-    files = BUNDLE_FILES[mode]
+    files = {k: v for k, v in BUNDLE_FILES[mode].items() if k != "tokenizer"}
     if local_dir:
         base = Path(local_dir)
-        return {name: base / fn for name, fn in files.items()}
-    return {name: Path(hf_hub_download(REPO, f"{mode}/{fn}", revision=REVISION))
-            for name, fn in files.items()}
+        paths = {name: base / fn for name, fn in files.items()}
+    else:
+        paths = {name: Path(hf_hub_download(REPO, f"{mode}/{fn}", revision=REVISION))
+                 for name, fn in files.items()}
+    paths["tokenizer"] = _tokenizer_path(mode, local_dir)
+    return paths
+
+
+def _tokenizer_path(mode, local_dir=None):
+    """The bundle's gzipped tokenizer if it has one, else the plain tokenizer.json."""
+    if local_dir:
+        gz = Path(local_dir) / TOKENIZER_GZ
+        return gz if gz.exists() else Path(local_dir) / TOKENIZER
+    try:
+        return Path(hf_hub_download(REPO, f"{mode}/{TOKENIZER_GZ}", revision=REVISION))
+    except EntryNotFoundError:
+        return Path(hf_hub_download(REPO, f"{mode}/{TOKENIZER}", revision=REVISION))
