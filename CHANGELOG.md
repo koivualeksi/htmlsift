@@ -14,10 +14,6 @@ All notable changes to htmlsift are documented here. The format follows
   predictions are unchanged.
 
 ### Changed
-- `output="text"` no longer writes tables as markdown. A table row is now its non-empty
-  cells joined by ` | ` (`Downloads | 1,240`), with no outer pipes, no `| --- |`
-  separator rows and no empty cells. A literal `|` in a cell is kept. `html` and
-  `markdown` output, the model input and the predictions are unchanged.
 - Dependencies now have tested bounds: `lxml>=6.0.4,<7`, `tokenizers>=0.21,<0.24`,
   `onnxruntime>=1.20.1`, `numpy>=1.26.4`, `huggingface-hub>=0.26.5`, `w3lib>=2.3.1,<3`
   (was `>=2.5,<3`), and for `[full]` `torch>=2.7.1`, `transformers>=5.1,<6`. Tested on

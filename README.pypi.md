@@ -107,7 +107,7 @@ ex = Extractor("base", device="cuda")  # require the GPU
 
 | `output` | what you get |
 |---|---|
-| `text` (default) | selected content as plain text: no heading, emphasis, code, quote, rule or fence markers; list bullets and ordered-list numbers stay; a table row is its non-empty cells joined by `\|` (`a \| b`) |
+| `text` (default) | selected content as plain text: no heading, emphasis, code, quote, rule or fence markers; list bullets, ordered-list numbers and table rows (`\| a \| b \|`) stay |
 | `html` | selected DOM, with structure / links / images kept |
 | `markdown` | clean markdown, links and images preserved |
 
