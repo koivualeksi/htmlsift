@@ -13,7 +13,7 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError
 
 REPO = "koivualeksi/htmlsift-release"
-REVISION = "73ac2b978aef356e9e5772640a0c9444f2b67705"   # release commit with both mini/
+REVISION = "a86f08a9ee595b89a54c144f225672e1cf5f9c4c"   # release commit with both mini/
                          # and base/ bundles. Pin per release so a version fetches byte-
                          # identical files; None (dev only) would track the default branch.
 
