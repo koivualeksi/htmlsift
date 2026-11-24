@@ -13,8 +13,8 @@ import onnxruntime as ort
 
 # onnxruntime's arena keeps its peak after a run. Pages estimated above SHRINK_MB give
 # the memory back when they finish; smaller pages keep the arena for speed.
-TABLE_KB_PER_ID = 12
-HEAD_KB_PER_BLOCK = 21
+TABLE_KB_PER_ID = 1
+HEAD_KB_PER_BLOCK = 12
 SHRINK_MB = 100
 POOL_CHUNK = 32768                # tokens gathered per pooling batch
 

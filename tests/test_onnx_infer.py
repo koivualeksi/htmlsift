@@ -96,13 +96,13 @@ def test_table_runs_once_on_distinct_ids(fake_infer):
 
 
 def test_small_page_keeps_arena(fake_infer):
-    n = 4800
+    n = 8300
     assert arena_mb(1, n) < onnx_infer.SHRINK_MB
     fake_infer(_page([0], n))
     assert _shrunk() == [False, False]
 
 
-@pytest.mark.parametrize("n_unique, n_blocks", [(1, 5000), (9000, 1)])
+@pytest.mark.parametrize("n_unique, n_blocks", [(1, 8600), (103000, 1)])
 def test_big_page_shrinks_arena(fake_infer, n_unique, n_blocks):
     assert arena_mb(n_unique, n_blocks) > onnx_infer.SHRINK_MB
     fake_infer(_page(np.arange(n_unique), n_blocks))
