@@ -8,6 +8,8 @@ call shape that `prep_page` expects, so the default install tokenizes with the s
 `special_tokens_mask` off the result. The `tokenizers` library carries the same
 information on its `Encoding` object under different names, so this wraps the two up.
 """
+import gzip
+
 from tokenizers import Tokenizer
 
 
@@ -28,7 +30,10 @@ class FastTokenizer:
 
     @classmethod
     def from_file(cls, path):
-        """Load `tokenizer.json` at `path` -- the single self-contained tokenizer file."""
+        """Load `tokenizer.json` or `tokenizer.json.gz` at `path`."""
+        if str(path).endswith(".gz"):
+            with gzip.open(path, "rb") as f:
+                return cls(Tokenizer.from_buffer(f.read()))
         return cls(Tokenizer.from_file(str(path)))
 
     def __call__(self, text, add_special_tokens=True, **_ignored):

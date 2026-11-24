@@ -32,6 +32,9 @@ All notable changes to htmlsift are documented here. The format follows
   segment sum, in batches of 32,768 tokens, instead of a Python loop over blocks.
   Probabilities can differ from before by about 1e-6; on 2,040 test pages no block
   changed side of the 0.5 threshold.
+- The tokenizer is read from `tokenizer.json.gz` when the bundle has one, and from
+  `tokenizer.json` otherwise, both from the Hub and from a local bundle folder. Pinned
+  bundles without the gzipped file load as before.
 
 ### Fixed
 - A document that parses to no element (only comments, a doctype, an `<?xml?>`
