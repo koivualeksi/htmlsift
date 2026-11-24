@@ -176,8 +176,9 @@ TABLE_PAGE = ("<p>Stats:</p><table><tr><th>Metric</th><th>Value</th></tr>"
               "<tr><td>a|b</td><td>2</td></tr></table>")
 
 
-def test_text_table_rows_are_plain(keep_all):
-    assert keep_all.extract(TABLE_PAGE) == "Stats:\nMetric | Value\nDownloads | 1,240\na|b | 2"
+def test_text_table_keeps_markdown_rows(keep_all):
+    assert keep_all.extract(TABLE_PAGE) == ("Stats:\n| Metric | Value |\n| --- | --- |\n"
+                                            "| Downloads |  | 1,240 |\n| a|b | 2 |")
 
 
 def test_markdown_table_keeps_syntax(keep_all):
