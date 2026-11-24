@@ -6,6 +6,8 @@ onnxruntime only -- no torch. The table is a per-id lookup, so embedding each di
 once gives the same rows as embedding every token, and memory scales with the page's
 vocabulary instead of its length.
 """
+from itertools import chain
+
 import numpy as np
 import onnxruntime as ort
 
@@ -14,6 +16,7 @@ import onnxruntime as ort
 TABLE_KB_PER_ID = 12
 HEAD_KB_PER_BLOCK = 21
 SHRINK_MB = 100
+POOL_CHUNK = 32768                # tokens gathered per pooling batch
 
 
 def arena_mb(n_unique, n_blocks):
@@ -24,10 +27,20 @@ def arena_mb(n_unique, n_blocks):
 def pool(emb_u, inv, members):
     """Per-block mean of the member tokens' embeddings -> [n, H]. emb_u holds one row
     per distinct id and emb_u[inv[t]] is token t's. A token-less block pools to zeros."""
+    lengths = np.fromiter(map(len, members), np.int64, len(members))
+    flat = inv[np.fromiter(chain.from_iterable(members), np.int64, int(lengths.sum()))]
+    ends = np.cumsum(lengths)
     pooled = np.zeros((len(members), emb_u.shape[1]), dtype=np.float32)
-    for i, mem in enumerate(members):
-        if mem:
-            pooled[i] = emb_u[inv[mem]].mean(0)
+    lo = 0
+    while lo < len(members):
+        hi = max(int(np.searchsorted(ends, ends[lo] - lengths[lo] + POOL_CHUNK, "right")), lo + 1)
+        nz = np.flatnonzero(lengths[lo:hi]) + lo
+        if nz.size:
+            starts = ends[nz] - lengths[nz]
+            rows = emb_u[flat[starts[0]:ends[nz[-1]]]]
+            sums = np.add.reduceat(rows, starts - starts[0], axis=0)
+            pooled[nz] = sums / lengths[nz, None].astype(np.float32)
+        lo = hi
     return pooled
 
 
