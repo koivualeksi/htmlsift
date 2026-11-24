@@ -28,6 +28,10 @@ All notable changes to htmlsift are documented here. The format follows
   segment sum, in batches of 32,768 tokens, instead of a Python loop over blocks.
   Probabilities can differ from before by about 1e-6; on 2,040 test pages no block
   changed side of the 0.5 threshold.
+- The mini model's per-page memory estimate is sized for the rank-128 table: 1 KB per
+  distinct token id and 12 KB per block (was 12 and 21, sized at 768 wide). Pages
+  estimated above 100 MB still give onnxruntime's arena back after they run; with the
+  new sizes that is pages with about 8,500 or more blocks. Output is unchanged.
 - The tokenizer is read from `tokenizer.json.gz` when the bundle has one, and from
   `tokenizer.json` otherwise, both from the Hub and from a local bundle folder. Pinned
   bundles without the gzipped file load as before.
