@@ -14,6 +14,10 @@ All notable changes to htmlsift are documented here. The format follows
   predictions are unchanged.
 
 ### Changed
+- New mini model: the embedding table is int8 rank-128 (34.6 MB, was 768 wide and
+  202 MB). The release pin moves to Hub commit `a86f08a`; `base/` is unchanged apart from
+  its added `tokenizer.json.gz`. The first mini download is ~43 MB, and base fetches the
+  5.4 MB gzipped tokenizer instead of the 33 MB plain one.
 - Dependencies now have tested bounds: `lxml>=6.0.4,<7`, `tokenizers>=0.21,<0.24`,
   `onnxruntime>=1.20.1`, `numpy>=1.26.4`, `huggingface-hub>=0.26.5`, `w3lib>=2.3.1,<3`
   (was `>=2.5,<3`), and for `[full]` `torch>=2.7.1`, `transformers>=5.1,<6`. Tested on
