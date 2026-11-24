@@ -34,13 +34,25 @@ ROW_GROUP_TAGS = {"thead", "tbody", "tfoot"}
 BLOCKISH_TAGS = (SIMPLE_BLOCK_TAGS | set(HEADING_TAGS) | LIST_TAGS |
                  {"table", "blockquote"})
 
+# C0 control characters XML forbids (NUL aside), raw or as numeric character references.
+_C0_PATTERN = (r"[\x01-\x08\x0b\x0c\x0e-\x1f]"
+               r"|&#0*(?:[1-8]|1[124-9]|2[0-9]|3[01])(?![0-9]);?"
+               r"|&#[xX]0*(?:[1-8bBcCeEfF]|1[0-9a-fA-F])(?![0-9a-fA-F]);?")
+_C0 = re.compile(_C0_PATTERN)
+_C0_BYTES = re.compile(_C0_PATTERN.encode())
+
 
 def parse(html_str):
-    """HTML string -> lxml tree. Bytes-encode when the string carries an encoding
-    declaration, which lxml rejects on a str."""
+    """HTML string -> lxml tree. Removes the C0 control characters XML forbids (raw or
+    as numeric references); libxml2 2.11 drops them, 2.14 keeps them. Bytes-encode when
+    the string carries an encoding declaration, which lxml rejects on a str."""
     parser = lxml_html.HTMLParser(collect_ids=False, encoding="utf-8",
                                   remove_blank_text=True, remove_comments=True,
                                   remove_pis=True)
+    if isinstance(html_str, str):
+        html_str = _C0.sub("", html_str)
+    else:
+        html_str = _C0_BYTES.sub(b"", html_str)
     if isinstance(html_str, str) and (
             "<?xml" in html_str or "<meta charset" in html_str or "encoding=" in html_str):
         html_str = html_str.encode("utf-8")
