@@ -12,6 +12,9 @@ All notable changes to htmlsift are documented here. The format follows
   `markdown`. Lines are compared ignoring case, punctuation and markers. Lines in a
   `<pre>` are never deduped. Off by default; `with_blocks=True`, the model input and the
   predictions are unchanged.
+- `threshold=` (CLI `--threshold`): a line is kept when its probability is above it,
+  0 to 1, default 0.5. Lower keeps more, higher keeps less. Only 0.5 is benchmarked.
+  `with_blocks=True` still returns every probability.
 
 ### Changed
 - New mini model: the embedding table is int8 rank-128 (34.6 MB, was 768 wide and
