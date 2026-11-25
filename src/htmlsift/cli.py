@@ -19,7 +19,7 @@ from w3lib.encoding import resolve_encoding
 
 from . import __version__
 from ._artifacts import BUNDLE_FILES, resolve_bundle
-from .extractor import Extractor
+from .extractor import THRESHOLD, Extractor
 from .loader import BASE_DEPS, FULL_INSTALL
 
 
@@ -107,6 +107,8 @@ def _emit(path, content, error, raw):
 def _extract(ap, args):
     if args.inputs.count("-") > 1:
         ap.error("'-' (stdin) can be given only once")
+    if not 0.0 <= args.threshold <= 1.0:
+        ap.error(f"--threshold must be between 0 and 1, got {args.threshold}")
     if args.encoding is not None and resolve_encoding(args.encoding.strip()) is None:
         ap.error(f"unknown encoding: {args.encoding}")
     ex = Extractor(args.mode, device=args.device)
@@ -126,7 +128,8 @@ def _extract(ap, args):
                         content = ex.extract(_read(path), output=args.output,
                                              encoding=args.encoding, base_url=args.base_url,
                                              drop_title=args.drop_title,
-                                             dedup=args.dedup)
+                                             dedup=args.dedup,
+                                             threshold=args.threshold)
                     except Exception as e:
                         error = str(e) or type(e).__name__
                 failed = failed or error is not None
@@ -162,6 +165,9 @@ def main(argv=None):
                          "og:title")
     ex.add_argument("--dedup", action="store_true",
                     help="leave out repeats of a kept line of 100 or more characters")
+    ex.add_argument("--threshold", type=float, default=THRESHOLD,
+                    help="keep lines with probability above this, 0 to 1 (default 0.5); "
+                         "lower keeps more")
     ex.add_argument("--jsonl", action="store_true",
                     help="always print JSON records, even for a single input")
 

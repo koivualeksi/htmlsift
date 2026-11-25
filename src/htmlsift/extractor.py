@@ -3,6 +3,8 @@ runs one pipeline per call -- parse, render to lines, score each line, keep the 
 over threshold, serialize. Mirrors the research inference front-end (render_blocks +
 prep_page + threshold); no sanitize step before rendering.
 """
+import math
+import numbers
 import unicodedata
 
 import numpy as np
@@ -30,9 +32,19 @@ def _visible(line):
     return any(c not in _FILLERS and unicodedata.category(c) not in _INVISIBLE for c in line)
 
 
-def _plain_text(root, block_line, n_lines, probs):
+def _check_threshold(threshold):
+    """threshold as a float; TypeError unless a real number, ValueError outside [0, 1]."""
+    if isinstance(threshold, bool) or not isinstance(threshold, numbers.Real):
+        raise TypeError(f"threshold must be a number, not {type(threshold).__name__}")
+    threshold = float(threshold)
+    if math.isnan(threshold) or not 0.0 <= threshold <= 1.0:
+        raise ValueError(f"threshold must be between 0 and 1, got {threshold}")
+    return threshold
+
+
+def _plain_text(root, block_line, n_lines, probs, threshold=THRESHOLD):
     """The selected blocks as plain text, from a marker-free render of the same tree."""
-    sel = [i for i, p in zip(block_line, probs, strict=True) if p > THRESHOLD]
+    sel = [i for i, p in zip(block_line, probs, strict=True) if p > threshold]
     if not sel:
         return ""
     plain, _ = render_tree(root, plain=True)
@@ -41,10 +53,10 @@ def _plain_text(root, block_line, n_lines, probs):
     return "\n".join(s for s in (plain[i].rstrip() for i in sel) if _visible(s))
 
 
-def _drop_title(root, blocks, block_src, probs):
+def _drop_title(root, blocks, block_src, probs, threshold=THRESHOLD):
     """probs with the first selected block with text deselected if it is the page
     title, else probs unchanged."""
-    for k in np.flatnonzero(probs > THRESHOLD):
+    for k in np.flatnonzero(probs > threshold):
         if not _visible(blocks[k]) or not norm(blocks[k]):
             continue
         if find_title(root, k, blocks[k], block_src) is not None:
@@ -54,11 +66,11 @@ def _drop_title(root, blocks, block_src, probs):
     return probs
 
 
-def _dedup(blocks, block_pieces, probs):
+def _dedup(blocks, block_pieces, probs, threshold=THRESHOLD):
     """probs with each selected line that repeats an earlier selected one (compared after
     norm(), DEDUP_CHARS or more) deselected; lines in a pre are left alone."""
     probs, seen = probs.copy(), set()
-    for k in np.flatnonzero(probs > THRESHOLD):
+    for k in np.flatnonzero(probs > threshold):
         key = norm(blocks[k])
         if len(key) < DEDUP_CHARS or any(p[1] == "pre" for p in block_pieces[k]):
             continue
@@ -87,7 +99,7 @@ class Extractor:
         return self._model
 
     def extract(self, html, output="text", with_blocks=False, *, encoding=None, base_url=None,
-                drop_title=False, dedup=False):
+                drop_title=False, dedup=False, threshold=THRESHOLD):
         """Extract main content from HTML, given as str or bytes.
 
         bytes are decoded by BOM, then encoding= (e.g. an HTTP or WARC charset), then the
@@ -107,22 +119,25 @@ class Extractor:
         matches the page's <title> or og:title, in every output (not with_blocks).
         dedup=True leaves out each selected line of 100 or more characters that repeats an
         earlier selected line (case, punctuation and markers ignored), keeping the first
-        copy, in every output (not with_blocks). Lines in a <pre> are never deduped."""
+        copy, in every output (not with_blocks). Lines in a <pre> are never deduped.
+        threshold= keeps the lines whose probability is above it, 0 to 1: lower keeps more,
+        higher keeps less. Only the default 0.5 is benchmarked; with_blocks ignores it."""
         if output not in _OUTPUTS:
             raise ValueError(f"unknown output {output!r}; expected 'text', 'html', or 'markdown'")
         if base_url is not None and not isinstance(base_url, str):
             raise TypeError(f"base_url must be str or None, not {type(base_url).__name__}")
+        threshold = _check_threshold(threshold)
         (root, blocks, block_src, block_pieces, block_line, n_lines,
          probs) = self._predict(html, encoding)
         if with_blocks:
             return blocks, probs
         if drop_title:
-            probs = _drop_title(root, blocks, block_src, probs)
+            probs = _drop_title(root, blocks, block_src, probs, threshold)
         if dedup:
-            probs = _dedup(blocks, block_pieces, probs)
+            probs = _dedup(blocks, block_pieces, probs, threshold)
         if output == "text":
-            return _plain_text(root, block_line, n_lines, probs)
-        selected = set(np.flatnonzero(probs > THRESHOLD).tolist())
+            return _plain_text(root, block_line, n_lines, probs, threshold)
+        selected = set(np.flatnonzero(probs > threshold).tolist())
         if not selected:
             return ""
         base = effective_base(root, base_url)
@@ -170,10 +185,11 @@ _CACHE = {}
 
 
 def extract(html, mode="mini", output="text", with_blocks=False, *, encoding=None,
-            base_url=None, drop_title=False, dedup=False):
+            base_url=None, drop_title=False, dedup=False, threshold=THRESHOLD):
     """Module-level convenience: extract with a per-mode cached Extractor."""
     ex = _CACHE.get(mode)
     if ex is None:
         ex = _CACHE[mode] = Extractor(mode)
     return ex.extract(html, output=output, with_blocks=with_blocks, encoding=encoding,
-                      base_url=base_url, drop_title=drop_title, dedup=dedup)
+                      base_url=base_url, drop_title=drop_title, dedup=dedup,
+                      threshold=threshold)

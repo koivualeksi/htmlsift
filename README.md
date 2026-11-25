@@ -168,6 +168,19 @@ where repeats are usually real. A line counts as a first copy only if it is sele
 applies to `text`, `html` and `markdown`; `with_blocks=True` is unchanged. It is off by
 default.
 
+### Threshold
+
+The model scores each line from 0 to 1, and a line is kept when its score is above
+`threshold` (default 0.5). Lower keeps more, higher keeps less:
+
+```python
+ex.extract(html, threshold=0.3)
+```
+
+It is a precision/recall dial: only the default 0.5 is benchmarked, so the published
+scores hold for 0.5 alone. It applies to `text`, `html` and `markdown`, and to the lines
+`drop_title` and `dedup` look at; `with_blocks=True` returns every score unthresholded.
+
 The larger model, from the `[full]` install:
 
 ```python
@@ -254,6 +267,7 @@ work the same in every shell; directories are not walked.
 | `--encoding ENC` | charset of the input bytes; applies to every input |
 | `--drop-title` | leave out the leading page title, as `drop_title=True` |
 | `--dedup` | leave out repeated lines, as `dedup=True` |
+| `--threshold T` | keep lines scored above `T`, as `threshold=` (default 0.5) |
 | `--jsonl` | always print JSON records |
 
 Files are read as bytes, so the charset is detected as described above. Output is utf-8.

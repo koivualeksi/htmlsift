@@ -137,7 +137,7 @@ htmlsift --version                                  # htmlsift, Python and backe
 ```
 
 Flags: `--output`, `--mode`, `--device`, `--base-url`, `--encoding`, `--drop-title`,
-`--jsonl` (records
+`--dedup`, `--threshold`, `--jsonl` (records
 even for a single file). Failed files become `{"path", "error"}` records and the exit code
 is 1. Output is utf-8.
 
