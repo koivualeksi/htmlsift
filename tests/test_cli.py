@@ -25,9 +25,9 @@ class FakeExtractor:
         return object()
 
     def extract(self, html, output="text", *, encoding=None, base_url=None, drop_title=False,
-                dedup=False):
+                dedup=False, threshold=0.5):
         self.calls.append({"output": output, "encoding": encoding, "base_url": base_url,
-                           "drop_title": drop_title, "dedup": dedup})
+                           "drop_title": drop_title, "dedup": dedup, "threshold": threshold})
         text = html.decode(encoding or "utf-8")
         if "FAIL" in text:
             raise ValueError("bad page")
@@ -181,7 +181,10 @@ def test_version_base_missing(monkeypatch, capsys):
                          '(pip install "htmlsift[full]")']
 
 
-@pytest.mark.parametrize("argv", [["-", "-"], ["a.html", "--encoding", "bogus"]])
+@pytest.mark.parametrize("argv", [["-", "-"], ["a.html", "--encoding", "bogus"],
+                                  ["a.html", "--threshold", "1.5"],
+                                  ["a.html", "--threshold", "nan"],
+                                  ["a.html", "--threshold", "x"]])
 def test_usage_errors(run, argv):
     with pytest.raises(SystemExit) as exc:
         run(*argv)
@@ -192,13 +195,14 @@ def test_options_reach_extractor(run, tmp_path):
     (tmp_path / "a.html").write_bytes("caf\xe9".encode("cp1252"))
     code, out, _ = run("a.html", "--output", "markdown", "--encoding", "cp1252",
                        "--base-url", "https://example.com/", "--mode", "base",
-                       "--device", "cpu", "--drop-title", "--dedup")
+                       "--device", "cpu", "--drop-title", "--dedup",
+                       "--threshold", "0.3")
     ex = FakeExtractor.last
     assert (code, out) == (0, "café\n".encode())
     assert (ex.mode, ex.device) == ("base", "cpu")
     assert ex.calls == [{"output": "markdown", "encoding": "cp1252",
                          "base_url": "https://example.com/", "drop_title": True,
-                         "dedup": True}]
+                         "dedup": True, "threshold": 0.3}]
 
 
 def test_title_kept_by_default(run, tmp_path):
@@ -206,6 +210,7 @@ def test_title_kept_by_default(run, tmp_path):
     run("a.html")
     assert FakeExtractor.last.calls[0]["drop_title"] is False
     assert FakeExtractor.last.calls[0]["dedup"] is False
+    assert FakeExtractor.last.calls[0]["threshold"] == 0.5
 
 
 def test_utf8_output_not_escaped(run, tmp_path):
