@@ -6,6 +6,14 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-26
+
+### Changed
+- README and PyPI description: they now open with what the package is for, a quick start
+  and the learning curve on labelled articles, and add a "When not to use it" section. The
+  package `description` and `keywords` are updated to match. No code or model change; the
+  model pin is unchanged.
+
 ## [0.3.0] - 2026-11-26
 
 ### Added
@@ -184,7 +192,8 @@ Documentation and packaging metadata only — no code or model changes since 0.1
   warning on CPU fallback.
 - Model bundles fetched from the Hugging Face Hub, pinned to a fixed commit revision.
 
-[Unreleased]: https://github.com/koivualeksi/htmlsift/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/koivualeksi/htmlsift/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/koivualeksi/htmlsift/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/koivualeksi/htmlsift/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/koivualeksi/htmlsift/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/koivualeksi/htmlsift/compare/v0.1.1...v0.2.0

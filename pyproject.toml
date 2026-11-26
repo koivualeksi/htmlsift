@@ -5,13 +5,13 @@ build-backend = "hatchling.build"
 [project]
 name = "htmlsift"
 dynamic = ["version"]
-description = "Main-content extraction for web pages"
+description = "Learned main-content extraction and boilerplate removal: HTML to clean text, HTML or markdown"
 readme = "README.pypi.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Aleksi Koivu", email = "koivu.aleksi@gmail.com" }]
-keywords = ["html", "main-content", "content-extraction", "boilerplate-removal", "web-scraping"]
+keywords = ["html", "main-content", "content-extraction", "boilerplate-removal", "web-scraping", "html-to-text", "html-to-markdown", "markdown", "rag", "llm"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
