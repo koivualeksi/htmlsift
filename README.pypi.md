@@ -1,14 +1,48 @@
 # htmlsift
 
-Web main-content extraction: HTML in, clean text / HTML / markdown out. Trained on
-[WebMainBench](https://github.com/opendatalab/WebMainBench), scores each rendered line of a
-page as main content or boilerplate (nav, ads, cookie banners, and footers) and returns just
-the content.
+[![PyPI](https://img.shields.io/pypi/v/htmlsift)](https://pypi.org/project/htmlsift/)
+[![Python](https://img.shields.io/pypi/pyversions/htmlsift)](https://pypi.org/project/htmlsift/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/koivualeksi/htmlsift/blob/main/LICENSE)
+[![HF model](https://img.shields.io/badge/%F0%9F%A4%97%20model-htmlsift--release-yellow)](https://huggingface.co/koivualeksi/htmlsift-release)
+[![HF Space](https://img.shields.io/badge/%F0%9F%A4%97%20Space-try%20it-blue)](https://huggingface.co/spaces/koivualeksi/htmlsift)
+
+### Main content is a policy
+
+Main-content extraction and boilerplate removal for web pages: raw HTML in, clean text, HTML
+or markdown out, with nav, ads, cookie banners and footers stripped. For RAG and LLM data
+pipelines, scraping and archiving.
+
+What counts as main content depends on who is asking. Heuristic extractors such as
+trafilatura and readability hard-code one answer in rules; htmlsift learns it from labelled
+pages. It ships trained on [WebMainBench](https://github.com/opendatalab/WebMainBench) (WMB),
+and a few dozen pages labelled your way retrain it to yours.
 
 Try it in the browser: https://huggingface.co/spaces/koivualeksi/htmlsift
 
 Apache-2.0. Full documentation, diagrams, and benchmarks:
 https://github.com/koivualeksi/htmlsift
+
+## Quick start
+
+```bash
+pip install htmlsift
+```
+
+```python
+import htmlsift
+text = htmlsift.extract(html)                    # main content as plain text
+md = htmlsift.extract(html, output="markdown")   # or output="html"
+```
+
+## A few dozen labelled pages teach it your policy
+
+Out of the box on WCXB articles, the shipped `mini` scores 0.918, below trafilatura's 0.937.
+Continue training it on 50 labelled articles and it passes every heuristic (0.940); all 513
+reach 0.956 (257 WCXB test articles, word-F1, 3-seed means). Training pages come from other
+sites than the test pages. The curve is measured on articles only; page types with more
+varied layouts, such as product or listing pages, are untested and may need more labelled
+pages. Recipes and the `base` results are in the
+[research repo](https://github.com/koivualeksi/htmlsift-research).
 
 ## Results
 
@@ -37,12 +71,15 @@ Trained on WMB, scored on benchmarks the model never saw. Each column uses that 
 `mini` is the shipped model; the `base` row is the research mean of its recipe's three seeds.
 Heuristics are single deterministic runs.
 
-A few dozen labelled pages retrain it to your own policy: continued from the shipped `mini`,
-50 WCXB articles lift it from 0.918 to 0.940 on the 257 WCXB test articles, past trafilatura
-(0.937), and the full 513 reach 0.956. "Main content" is a labeling policy: htmlsift leads
-in-domain and stays competitive off-policy — retrain on your own labels if your definition
-differs. Details and the `base` results in the
-[research repo](https://github.com/koivualeksi/htmlsift-research).
+## When not to use it
+
+- **Off-policy pages with nothing to retrain on.** Zero-shot on benchmarks labelled under
+  other policies, `mini` is about level with the best heuristic. The clear lead is on WMB's
+  policy, or on one you train it on.
+- **Tight memory.** `mini` holds ~400 MB once loaded, where the heuristic extractors take a
+  few tens of MB, and a very large page can exhaust a 1–2 GB machine.
+- **Raw speed above all.** `mini` runs at heuristic speed; resiliparse is an order of
+  magnitude faster, at markedly lower accuracy.
 
 ## Install
 
