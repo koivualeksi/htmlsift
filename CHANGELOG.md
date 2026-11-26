@@ -6,6 +6,8 @@ All notable changes to htmlsift are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-26
+
 ### Added
 - `dedup=True` (CLI `--dedup`): leaves out each selected line of 100 or more characters
   that repeats an earlier selected line, keeping the first copy, in `text`, `html` and
@@ -182,7 +184,8 @@ Documentation and packaging metadata only — no code or model changes since 0.1
   warning on CPU fallback.
 - Model bundles fetched from the Hugging Face Hub, pinned to a fixed commit revision.
 
-[Unreleased]: https://github.com/koivualeksi/htmlsift/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/koivualeksi/htmlsift/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/koivualeksi/htmlsift/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/koivualeksi/htmlsift/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/koivualeksi/htmlsift/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/koivualeksi/htmlsift/compare/v0.1.0...v0.1.1
