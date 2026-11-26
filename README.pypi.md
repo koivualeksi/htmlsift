@@ -5,20 +5,22 @@ Web main-content extraction: HTML in, clean text / HTML / markdown out. Trained 
 page as main content or boilerplate (nav, ads, cookie banners, and footers) and returns just
 the content.
 
+Try it in the browser: https://huggingface.co/spaces/koivualeksi/htmlsift
+
 Apache-2.0. Full documentation, diagrams, and benchmarks:
 https://github.com/koivualeksi/htmlsift
 
 ## Results
 
-| model | desc | WMB test F1 | seeds | CPU (pages/s) | GPU (pages/s) | install |
-|---|---|---|---|---|---|---|
-| `base` | 311M, 10 layers | **0.9311** | 3 | 0.4 | 24.6 | `htmlsift[full]` |
-| unpublished | 97M, 6 layers, int8 QAT | 0.9256 | 3 | 0.9 | 30.2 | — |
-| `mini` | int8 embedding table | 0.9010 | 3 | **27.7** | — | `htmlsift` |
+| model | desc | WMB test F1 | CPU (pages/s) | GPU (pages/s) | install |
+|---|---|---|---|---|---|
+| `base` | 311M, 10 layers | **0.9288** | — | 24.6 | `htmlsift[full]` |
+| `mini` | int8 rank-128 embedding table | 0.9114 | **30.4** | — | `htmlsift` |
 
-GPU = RTX 4090, CPU = Ryzen 5 3600 single thread; WMB test = 544 pages (one of the 545 has
-no gold reference). On WMB (in-domain), `mini` scores ~15 F1 points above trafilatura at
-comparable CPU speed.
+F1 = the shipped model through this package; WMB test = 544 pages (one of the 545 has no gold
+reference). CPU = one thread in a 2 vCPU / 4 GB Docker container (Intel i7-6820HQ); GPU =
+RTX 4090. On WMB (in-domain), `mini` scores ~16 F1 points above trafilatura, which takes 1.3x
+mini's median time per page in the same container (44.0 vs 32.9 ms).
 
 ### Cross-benchmark accuracy (zero-shot)
 
@@ -26,13 +28,21 @@ Trained on WMB, scored on benchmarks the model never saw. Each column uses that 
 
 | model | WMB (ROUGE-5) | WCXB (word-F1) | DAnIEL (ROUGE-L) |
 |---|---|---|---|
-| `base` | 0.9311 | 0.8633 | 0.9175 |
-| `mini` | 0.9010 | 0.8474 | 0.8797 |
-| trafilatura | 0.7525 | 0.8584 | 0.8265 |
-| readability | 0.8016 | 0.7653 | 0.8925 |
+| `base` recipe, 3 seeds | 0.9311 | 0.8633 | 0.9175 |
+| `mini` | 0.9114 | 0.8529 | 0.8925 |
+| trafilatura | 0.7525 | 0.8584 | 0.8255 |
+| readability | 0.8016 | 0.7653 | 0.8904 |
 | resiliparse | 0.7135 | 0.7909 | 0.7094 |
 
-Model rows are 3-seed test means; heuristics are single deterministic runs. "Main content" is a labeling policy: htmlsift leads in-domain and stays competitive off-policy — retrain on your own labels if your definition differs. Details in the [research repo](https://github.com/koivualeksi/htmlsift-research).
+`mini` is the shipped model; the `base` row is the research mean of its recipe's three seeds.
+Heuristics are single deterministic runs.
+
+A few dozen labelled pages retrain it to your own policy: continued from the shipped `mini`,
+50 WCXB articles lift it from 0.918 to 0.940 on the 257 WCXB test articles, past trafilatura
+(0.937), and the full 513 reach 0.956. "Main content" is a labeling policy: htmlsift leads
+in-domain and stays competitive off-policy — retrain on your own labels if your definition
+differs. Details and the `base` results in the
+[research repo](https://github.com/koivualeksi/htmlsift-research).
 
 ## Install
 
@@ -42,7 +52,7 @@ pip install htmlsift[full]    # adds the base 311M model (torch; GPU-capable)
 ```
 
 - `htmlsift` — the `mini` model only; few dependencies (onnxruntime + tokenizers + lxml +
-  numpy + huggingface-hub + w3lib). First use downloads ~230 MB of model files.
+  numpy + huggingface-hub + w3lib). First use downloads ~43 MB of model files.
 - `htmlsift[full]` — adds `torch` + `transformers` to run `base`. First use of `base`
   downloads ~1 GB.
 
@@ -52,9 +62,10 @@ cache only.
 
 ### Memory (`mini`)
 
-~340 MB once loaded; 99 % of CommonCrawl pages need under 50 MB more. Memory grows with
-page length (~21 KB per rendered line), so a very large page can exhaust RAM on a 1–2 GB
-machine. Cap the input size before calling `extract()`.
+~400 MB once loaded. Memory grows with page length (about 12 KB per rendered line for
+inference, plus parsing): a typical page adds about 5 MB, a 5 MB page with 16,000 rendered
+lines up to ~280 MB, so a very large page can exhaust RAM on a 1–2 GB machine. Cap the
+input size before calling `extract()`.
 
 ## Usage
 
@@ -92,6 +103,14 @@ Leave out the page title that starts the content, as pretraining text pipelines 
 
 ```python
 ex.extract(html, drop_title=True)
+```
+
+Leave out repeated lines of 100 or more characters, keeping the first copy (off by default),
+and move the keep/drop cut-off from its benchmarked default of 0.5:
+
+```python
+ex.extract(html, dedup=True)
+ex.extract(html, threshold=0.3)      # lower keeps more, higher keeps less
 ```
 
 The larger model, from `htmlsift[full]`:

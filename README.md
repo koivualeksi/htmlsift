@@ -12,50 +12,105 @@ Two models shipped, both trained on [WebMainBench][wmb] (WMB) — 7,825 labelled
 
 Each model is fully re-trainable with your own annotated data and the whole research suite is available at [htmlsift-research](https://github.com/koivualeksi/htmlsift-research)
 
+Try it in the browser: [htmlsift on Hugging Face Spaces](https://huggingface.co/spaces/koivualeksi/htmlsift).
+
 [wmb]: https://github.com/opendatalab/WebMainBench
 
 ## Results
 
-| model | desc | WMB test F1 | seeds | CPU (pages/s) | GPU (pages/s) | install |
-|---|---|---|---|---|---|---|
-| `base` | 311M, 10 layers | **0.9311** | 3 | 0.4 | 24.6 | `htmlsift[full]` |
-| unpublished | 97M, 6 layers, int8 QAT | 0.9256 | 3 | 0.9 | 30.2 | — |
-| `mini` | int8 embedding table | 0.9010 | 3 | **27.7** | — | `htmlsift` |
+| model | desc | WMB test F1 | CPU (pages/s) | GPU (pages/s) | install |
+|---|---|---|---|---|---|
+| `base` | 311M, 10 layers | **0.9288** | — | 24.6 | `htmlsift[full]` |
+| `mini` | int8 rank-128 embedding table | 0.9114 | **30.4** | — | `htmlsift` |
 
-* GPU = RTX 4090
-* CPU = Ryzen 5 3600 single thread
-* WMB test = 544 pages: one of the 545 test pages has no gold reference and is skipped in scoring.
+* F1 = the shipped model run through this package, WMB test: 544 pages (one of the 545 test
+  pages has no gold reference and is skipped in scoring).
+* CPU = one thread in a 2 vCPU / 4 GB Docker container (Intel i7-6820HQ). `base` is a GPU
+  model and is not timed on CPU.
+* GPU = RTX 4090.
 
 ### On CPU
 
 ![htmlsift mini vs trafilatura, readability, resiliparse: F1 and ms/page on one CPU core](docs/assets/cpu_speed_accuracy.svg)
 
-One CPU core, WMB test (544 pages), extraction only. `mini` gets close to trafilatura's
-per-page time (36 vs 31 ms median) and scores ~15 F1 points higher. readability and resiliparse are faster but markedly less accurate. 
+One CPU thread, WMB test (544 pages), extraction only, all four extractors in the same
+2 vCPU / 4 GB container, timed page by page in rotating order. `mini` scores ~16 F1 points
+above trafilatura at heuristic speed: trafilatura takes 1.3x mini's median time (44.0 vs
+32.9 ms), readability is about level, and resiliparse is ~15x faster but markedly less
+accurate. The win is accuracy at heuristic speed, not speed.
+
+| extractor | median ms | pages/s | WMB F1 | RAM after load | worst page |
+|---|---|---|---|---|---|
+| `mini` | 32.9 | 30.4 | **0.9114** | 401 MB | 576 MB |
+| trafilatura | 44.0 | 22.7 | 0.7525 | 48 MB | 285 MB |
+| readability | 31.1 | 32.2 | 0.8016 | 34 MB | 134 MB |
+| resiliparse | 2.2 | 453.6 | 0.7135 | 26 MB | 87 MB |
+
+RAM after load is a process holding only that extractor, after loading it and running one
+page; worst page is the largest single-page peak over the fold. A 1 vCPU / 2 GB container
+gives the same ratios.
 
 ### On GPU
 
-![htmlsift base sustains 21x the throughput of MinerU-HTML at matched F1 on an RTX 4090](docs/assets/gpu_speed_accuracy_lite.svg)
+![htmlsift base sustains 21x the throughput of MinerU-HTML at near-equal F1 on an RTX 4090](docs/assets/gpu_speed_accuracy_lite.svg)
 
 RTX 4090, WMB test (544 pages). `base` sustains 24.6 pages/s against
-MinerU-HTML v1.1's 1.16. A 21x gap at matched accuracy (F1 0.9311 vs 0.9306).
+MinerU-HTML v1.1's 1.16: a 21x gap at near-equal accuracy (F1 0.9288 vs 0.9306).
 
 ### Cross benchmark accuracy
 
 The shipped models are trained on WMB, so WMB is in-domain. The other two columns are
 **zero-shot**, the model never saw WCXB or the multilingual DAnIEL in training. Each column is
-scored with that benchmark's own metric. `base` leads every heuristic here; `mini` lands just
-behind the best on each board — see **Annotation is a policy** under Concept.
+scored with that benchmark's own metric. The `base` recipe leads every heuristic here; `mini`
+is ~0.6 points behind trafilatura on WCXB, level with readability on DAnIEL, and ahead of the
+rest — see **Annotation is a policy** under Concept.
 
 | model | WMB (ROUGE-5) | WCXB (word-F1, zero-shot) | DAnIEL (ROUGE-L, zero-shot) |
 |---|---|---|---|
-| `base` | 0.9311 | 0.8633 | 0.9175 |
-| `mini` | 0.9010 | 0.8474 | 0.8797 |
-| trafilatura | 0.7525 | 0.8584 | 0.8265 |
-| readability | 0.8016 | 0.7653 | 0.8925 |
+| `base` recipe, 3 seeds | 0.9311 | 0.8633 | 0.9175 |
+| `mini` | 0.9114 | 0.8529 | 0.8925 |
+| trafilatura | 0.7525 | 0.8584 | 0.8255 |
+| readability | 0.8016 | 0.7653 | 0.8904 |
 | resiliparse | 0.7135 | 0.7909 | 0.7094 |
 
-Model rows are 3-seed test means; heuristics are single deterministic runs.
+`mini` is the shipped model through this package. The `base` row is the research mean of the
+recipe's three seeds; the shipped seed is scored on WMB only (0.9288). Heuristics are single
+deterministic runs.
+
+### A few dozen labelled pages teach it your policy
+
+When your idea of main content differs from WMB's, a few dozen labelled pages of one page
+type are enough to retrain for it. Trained on N WCXB articles and scored on the 257 WCXB test
+articles (word-F1):
+
+| articles | `mini`, from the shipped model | `mini`, from scratch | `base`, from scratch | `base`, from the shipped model |
+|---|---|---|---|---|
+| 0 | 0.918 | — | — | 0.934 |
+| 25 | 0.928 | 0.897 | 0.948 | 0.937 |
+| 50 | 0.940 | 0.915 | 0.956 | 0.941 |
+| 100 | 0.944 | 0.917 | 0.956 | 0.955 |
+| 200 | 0.948 | 0.929 | 0.956 | 0.952 |
+| 400 | 0.954 | 0.948 | 0.959 | 0.961 |
+| 513 | 0.956 | 0.951 | 0.967 | 0.960 |
+
+On the same 257 articles, with no training: trafilatura 0.937, readability 0.928,
+resiliparse 0.815.
+
+- **`mini`: start from the shipped model.** From 50 articles it beats every heuristic, and it
+  keeps climbing to 0.956. Trained from scratch it is behind at every size.
+- **`base`: start from scratch.** It is ahead up to 50 articles and ahead or level after,
+  likely because the full encoder has absorbed WMB's policy more deeply than the mini's small
+  head, so unlearning it costs more than starting clean (untested).
+- Most columns flatten from about 100–200 articles.
+
+Articles are the page type where heuristics are strongest: zero-shot, trafilatura beats both
+shipped models here. Training pages come from other sites than the test pages, and the 155
+test articles from sites with no training page score the same or higher. This is one page
+type across many sites; learning a single site from a few of its own pages is untested.
+`mini` columns are 3-seed means, `base` columns one seed, so `base` gaps under ~0.01 are
+not resolvable. Recipes and the per-site split are in
+[htmlsift-research](https://github.com/koivualeksi/htmlsift-research)
+(`results/wcxb-article-ladder.md`).
 
 ## Installation
 
@@ -65,7 +120,7 @@ pip install htmlsift[full]    # adds the base 311M model (torch; GPU-capable)
 ```
 
 - **`htmlsift`** — the `mini` model only; few dependencies (onnxruntime + tokenizers + lxml +
-  numpy + huggingface-hub + w3lib). First use downloads ~230 MB of model files.
+  numpy + huggingface-hub + w3lib). First use downloads ~43 MB of model files.
 - **`htmlsift[full]`** — adds `torch` + `transformers` to run `base`. First use of `base`
   downloads ~1 GB.
 
@@ -75,12 +130,13 @@ from cache only.
 
 ### Memory (`mini`)
 
-- **Fixed:** ~340 MB once the model is loaded.
-- **Per page:** 99 % of CommonCrawl pages need under 50 MB on top of that.
-- **Long pages:** memory grows with the page, about 21 KB per rendered line plus ~0.2 KB
-  per token. The largest page in an 8,820-page CommonCrawl sample needed ~0.8 GB.
-- **Release:** a page estimated above 100 MB hands its memory back to the system when it
-  finishes, so one large page doesn't leave a long-running worker big.
+- **Fixed:** the Python process takes ~400 MB once the model is loaded.
+- **Per page:** memory grows with the page: parsing and rendering, plus about 12 KB per
+  rendered line and 1 KB per distinct token for inference. A typical page (100–200 KB of
+  HTML) adds about 5 MB; a 5 MB page with 16,000 rendered lines adds up to ~280 MB.
+- **Release:** a page estimated above 100 MB of inference memory (about 8,500 rendered lines)
+  hands it back to the system when it finishes, so one large page doesn't leave a
+  long-running worker big.
 - **Small machines:** page size has no built-in limit, so a very large page can exhaust
   RAM on a 1–2 GB machine. Cap the input size before calling `extract()`.
 
@@ -102,6 +158,17 @@ Module-level convenience (cached singleton):
 import htmlsift
 htmlsift.extract(html)               # default mini
 ```
+
+The larger model, from the `[full]` install:
+
+```python
+ex = Extractor("base")               # 311M encoder; uses the GPU when one is present,
+                                     # else CPU (with a warning)
+ex = Extractor("base", device="cuda")  # require the GPU (errors if none is available)
+ex = Extractor("base", device="cpu", threads=4)  # force CPU; `threads` sets parallelism
+```
+
+`mini` is CPU-only (int8 ONNX); asking it for a GPU raises. Only `base` runs on the GPU.
 
 ### Bytes and encodings
 
@@ -180,41 +247,6 @@ ex.extract(html, threshold=0.3)
 It is a precision/recall dial: only the default 0.5 is benchmarked, so the published
 scores hold for 0.5 alone. It applies to `text`, `html` and `markdown`, and to the lines
 `drop_title` and `dedup` look at; `with_blocks=True` returns every score unthresholded.
-
-The larger model, from the `[full]` install:
-
-```python
-ex = Extractor("base")               # 311M encoder; uses the GPU when one is present,
-                                     # else CPU (with a warning)
-ex = Extractor("base", device="cuda")  # require the GPU (errors if none is available)
-ex = Extractor("base", device="cpu", threads=4)  # force CPU; `threads` sets parallelism
-```
-
-`mini` is CPU-only (int8 ONNX); asking it for a GPU raises. Only `base` runs on the GPU.
-
-### Example
-
-Nearly 1 MB of Wikipedia HTML ([Photosynthesis](https://en.wikipedia.org/wiki/Photosynthesis))
-in — the boilerplate (nav, sidebar, citations, footer) dropped, the article kept. The verbatim
-head of the markdown (`mini` and `base` return the same here):
-
-```python
-md = Extractor().extract(html, output="markdown")
-```
-
-```markdown
-# Photosynthesis
-
-From Wikipedia, the free encyclopedia
-
-For other uses, see [Photosynthesis (disambiguation)](https://en.wikipedia.org/wiki/Photosynthesis_(disambiguation)).
-
-Schematic of photosynthesis in plants. The [carbohydrates](https://en.wikipedia.org/wiki/Carbohydrate) produced are stored in or used by the plant.
-
-Composite image showing the global distribution of photosynthesis, including both oceanic [phytoplankton](https://en.wikipedia.org/wiki/Phytoplankton) and terrestrial [vegetation](https://en.wikipedia.org/wiki/Vegetation). Dark red and blue-green indicate regions of high photosynthetic activity in the ocean and on land, respectively.
-
-**Photosynthesis** is a [system](https://en.wikipedia.org/wiki/Biological_system) of [biological processes](https://en.wikipedia.org/wiki/Biological_process) by which [photopigment](https://en.wikipedia.org/wiki/Photopigment)-bearing [autotrophic](https://en.wikipedia.org/wiki/Autotroph) [organisms](https://en.wikipedia.org/wiki/Organism), such as most [plants](https://en.wikipedia.org/wiki/Plant), [algae](https://en.wikipedia.org/wiki/Algae) and [cyanobacteria](https://en.wikipedia.org/wiki/Cyanobacteria), convert light energy—typically from sunlight—into the chemical energy necessary to fuel their metabolism…
-```
 
 ### Output modes
 
@@ -311,7 +343,7 @@ Both tiers share the render, the per-line pooling, and the BiGRU head. They diff
 
 ![The same page kept differently under different benchmark annotation policies](docs/assets/annotation-example.svg)
 
-htmlsift learns what counts as main content from a benchmark's labels, so it's most accurate on pages that follow that policy. On WebMainBench (the benchmark the shipped models train on) it beats the common heuristic extractors by a wide margin. Zero-shot on benchmarks with different policies, the gap narrows: the 311M `base` still edges every heuristic tested (trafilatura, readability, resiliparse) on both WCXB and DAnIEL, and `mini` lands just behind the strongest heuristic on each board, ahead of the rest.
+htmlsift learns what counts as main content from a benchmark's labels, so it's most accurate on pages that follow that policy. On WebMainBench (the benchmark the shipped models train on) it beats the common heuristic extractors by a wide margin. Zero-shot on benchmarks with different policies, the gap narrows: the 311M `base` recipe still edges every heuristic tested (trafilatura, readability, resiliparse) on both WCXB and DAnIEL. `mini` is ~0.6 points behind trafilatura on WCXB and level with readability on DAnIEL, and clears the other two on each. No heuristic is strong on both boards.
 
 Train htmlsift on a different policy and it turns around. Fit it to WCXB instead of WMB and it tops WCXB but loses points on other benchmarks. For example when training `base` model on WCXB data, WMB falls to 0.8479, DAnIEL to 0.8826 while WCXB climbs up to 0.9209. Whichever policy you train on, htmlsift leads there and pays for it elsewhere.
 
@@ -323,7 +355,9 @@ For more information, review the [htmlsift-research](https://github.com/koivuale
 <summary><b>Training and retraining</b></summary>
 
 Most of the accuracy arrives in the first few hundred labelled pages — the model learns a
-benchmark's labelling policy quickly, so retraining on your own labels is cheap.
+benchmark's labelling policy quickly, so retraining on your own labels is cheap. On one page
+type a few dozen pages are enough (see **A few dozen labelled pages teach it your policy**
+under Results).
 
 ![Accuracy vs training-set size, three model arms](docs/assets/data-efficiency.svg)
 
