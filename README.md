@@ -34,7 +34,8 @@ md = htmlsift.extract(html, output="markdown")   # or output="html"
 Two models shipped, both trained on WMB (7,825 labelled pages, custom split 6,548 train /
 732 val / 545 test):
 
-- **`mini`** (default) - a fast int8-ONNX model that runs on CPU. `pip install htmlsift`
+- **`mini`** (default) - a fast int8-ONNX model that runs on CPU: ~43 MB download, ~30
+  pages/s on one thread. `pip install htmlsift`
 - **`base`** - a 311M encoder, most accurate and GPU-capable. `pip install htmlsift[full]`
 
 Both are fully retrainable on your own labels. Training and the whole research suite are in
@@ -42,45 +43,44 @@ Both are fully retrainable on your own labels. Training and the whole research s
 
 [wmb]: https://github.com/opendatalab/WebMainBench
 
-## A few dozen labelled pages teach it your policy
+## Retrain it on your own labels
 
 **Out of the box on WCXB articles, the shipped `mini` scores 0.918, below trafilatura's
-0.937. Continue training it on 50 labelled articles and it passes every heuristic (0.940);
-all 513 reach 0.956.**
+0.937. Continue training it on 50 labelled articles and it edges past every heuristic
+(0.940 ± 0.002 over 3 seeds); from 100 the lead is clear, and all 513 reach 0.956.**
 
-The learning curve is measured on articles only. Page types with more varied layouts, such
-as product or listing pages, are untested and may need more labelled pages.
+Trained on N WCXB articles and scored on the 257 WCXB test articles (word-F1):
 
-When your idea of main content differs from WMB's, a few dozen labelled pages of one page
-type are enough to retrain for it. Trained on N WCXB articles and scored on the 257 WCXB test
-articles (word-F1):
-
-| articles | `mini`, from the shipped model | `mini`, from scratch | `base`, from scratch | `base`, from the shipped model |
+| articles | `mini`, from the shipped model | `mini`, from scratch | `base`, from the shipped model | `base`, from scratch |
 |---|---|---|---|---|
-| 0 | 0.918 | — | — | 0.934 |
-| 25 | 0.928 | 0.897 | 0.948 | 0.937 |
-| 50 | 0.940 | 0.915 | 0.956 | 0.941 |
-| 100 | 0.944 | 0.917 | 0.956 | 0.955 |
-| 200 | 0.948 | 0.929 | 0.956 | 0.952 |
-| 400 | 0.954 | 0.948 | 0.959 | 0.961 |
-| 513 | 0.956 | 0.951 | 0.967 | 0.960 |
+| 0 | 0.918 | — | 0.934 | — |
+| 25 | 0.928 ± 0.001 | 0.897 ± 0.003 | 0.937 | **0.948** |
+| 50 | **0.940 ± 0.002** | 0.915 ± 0.007 | **0.941** | **0.956** |
+| 100 | **0.944 ± 0.003** | 0.917 ± 0.003 | **0.955** | **0.956** |
+| 200 | **0.948 ± 0.001** | 0.929 ± 0.005 | **0.952** | **0.956** |
+| 400 | **0.954 ± 0.004** | **0.948 ± 0.001** | **0.961** | **0.959** |
+| 513 | **0.956 ± 0.001** | **0.951 ± 0.002** | **0.960** | **0.967** |
 
-On the same 257 articles, with no training: trafilatura 0.937, readability 0.928,
-resiliparse 0.815.
+**Bold**: beats trafilatura (0.937). On the same 257 articles, with no
+training: trafilatura 0.937, readability 0.928, resiliparse 0.815. `mini` columns are 3-seed
+mean ± std; `base` columns are one seed, so `base` gaps under ~0.01 (such as the 0.955 →
+0.952 dip from the shipped model) are not resolvable.
 
-- **`mini`: start from the shipped model.** From 50 articles it beats every heuristic, and it
+Training pages come from other sites than the test pages, and the 155 test articles from
+sites with no training page score the same or higher.
+
+- **`mini`: start from the shipped model.** It edges past every heuristic at 50 articles and
   keeps climbing to 0.956. Trained from scratch it is behind at every size.
-- **`base`: start from scratch.** It is ahead up to 50 articles and ahead or level after,
-  likely because the full encoder has absorbed WMB's policy more deeply than the mini's small
-  head, so unlearning it costs more than starting clean (untested).
+- **`base`: start from scratch.** It is ahead up to 50 articles and ahead or level after.
 - Most columns flatten from about 100–200 articles.
 
-Articles are the page type where heuristics are strongest: zero-shot, trafilatura beats both
-shipped models here. Training pages come from other sites than the test pages, and the 155
-test articles from sites with no training page score the same or higher. This is one page
-type across many sites; learning a single site from a few of its own pages is untested.
-`mini` columns are 3-seed means, `base` columns one seed, so `base` gaps under ~0.01 are
-not resolvable. Recipes and the per-site split are in
+What was tested: articles, the page type where heuristics are strongest (zero-shot,
+trafilatura beats both shipped models here), across many sites, with test sites kept apart
+from training sites.
+
+What wasn't: page types with more varied layouts, such as product or listing pages, which
+may need more labelled pages; and learning a single site from a few of its own pages.
+Recipes and the per-site split are in
 [htmlsift-research](https://github.com/koivualeksi/htmlsift-research)
 (`results/wcxb-article-ladder.md`).
 
@@ -398,9 +398,8 @@ For more information, review the [htmlsift-research](https://github.com/koivuale
 <summary><b>Training and retraining</b></summary>
 
 Most of the accuracy arrives in the first few hundred labelled pages — the model learns a
-benchmark's labelling policy quickly, so retraining on your own labels is cheap. On one page
-type a few dozen pages are enough (see **A few dozen labelled pages teach it your policy**
-above).
+benchmark's labelling policy quickly, so retraining on your own labels is cheap (see
+**Retrain it on your own labels** above).
 
 ![Accuracy vs training-set size, three model arms](docs/assets/data-efficiency.svg)
 
