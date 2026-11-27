@@ -34,12 +34,14 @@ text = htmlsift.extract(html)                    # main content as plain text
 md = htmlsift.extract(html, output="markdown")   # or output="html"
 ```
 
-## A few dozen labelled pages teach it your policy
+## Retrain it on your own labels
 
 Out of the box on WCXB articles, the shipped `mini` scores 0.918, below trafilatura's 0.937.
-Continue training it on 50 labelled articles and it passes every heuristic (0.940); all 513
-reach 0.956 (257 WCXB test articles, word-F1, 3-seed means). Training pages come from other
-sites than the test pages. The curve is measured on articles only; page types with more
+Continue training it on 50 labelled articles and it edges past every heuristic
+(0.940 ± 0.002); from 100 the lead is clear (0.944 ± 0.003), and all 513 reach 0.956
+(257 WCXB test articles, word-F1, 3-seed mean ± std). Training pages come from other sites
+than the test pages, and the 155 test articles from sites with no training page score the
+same or higher. The curve is measured on articles only; page types with more
 varied layouts, such as product or listing pages, are untested and may need more labelled
 pages. Recipes and the `base` results are in the
 [research repo](https://github.com/koivualeksi/htmlsift-research).
